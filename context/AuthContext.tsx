@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { clearToken, getToken, setToken, apiFetch } from "@/lib/api";
+import { clearToken, getToken, setToken } from "@/lib/api";
+import { usersService } from "@/lib/services";
 import type { User } from "@/lib/types";
 
 interface AuthContextType {
@@ -28,16 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await apiFetch("/api/users/me");
-      if (!res.ok) {
-        clearToken();
-        setUser(null);
-        return null;
-      }
-      const data: User = await res.json();
+      const data = await usersService.getCurrentUser();
       setUser(data);
       return data;
     } catch {
+      clearToken();
+      setUser(null);
       return null;
     } finally {
       setIsLoading(false);

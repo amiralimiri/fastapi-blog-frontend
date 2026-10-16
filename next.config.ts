@@ -28,6 +28,16 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "**.arvanstorage.ir",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.arvanstorage.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "**",
       },
     ],

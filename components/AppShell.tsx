@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { apiFetch, getErrorMessage } from "@/lib/api";
-import { Modal } from "./Modal";
-import { toast } from "sonner";
+import { CreatePostModal } from "./CreatePostModal";
 import {
   Menu,
   X,
@@ -18,10 +16,11 @@ import {
   User as UserIcon,
   LogIn,
   UserPlus,
+  BookOpen,
+  Sparkles,
 } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
 
@@ -29,9 +28,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [themeMenu, setThemeMenu] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto");
   const [createOpen, setCreateOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [posting, setPosting] = useState(false);
 
   const themeRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         typeof window !== "undefined" &&
         window.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
 
+    document.documentElement.classList.toggle("dark", !!isDark);
     document.documentElement.dataset.bsTheme = isDark ? "dark" : "light";
     localStorage.setItem("theme", theme);
   }, [theme]);
@@ -66,39 +63,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  async function createPost(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      toast.error("Please enter both title and content");
-      return;
-    }
-
-    setPosting(true);
-    try {
-      const r = await apiFetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content }),
-      });
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      setCreateOpen(false);
-      setTitle("");
-      setContent("");
-      toast.success("Post created successfully!");
-      router.push("/");
-      router.refresh();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("postsUpdated"));
-      }
-    } catch (e: unknown) {
-      toast.error(
-        e instanceof Error ? e.message : "Network error. Please try again."
-      );
-    } finally {
-      setPosting(false);
-    }
-  }
-
   const renderThemeIcon = () => {
     if (theme === "light") return <Sun size={15} />;
     if (theme === "dark") return <Moon size={15} />;
@@ -111,7 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="navbar">
           <div className="nav-container">
             <Link className="brand flex items-center gap-2 font-bold tracking-tight" href="/">
-              FastAPI Blog
+              <BookOpen size={20} className="opacity-90" />
+              <span>FastAPI Blog</span>
             </Link>
 
             <button
@@ -232,61 +197,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="page-grid">
           <section>{children}</section>
           <aside>
-            <div className="content-section sidebar">
-              <h3>Our Sidebar</h3>
-              <p>You can put any information here you'd like.</p>
-              <ul>
-                <li>Latest Posts</li>
-                <li>Announcements</li>
-                <li>Calendars</li>
-                <li>etc</li>
-              </ul>
+            <div className="content-section sidebar space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-steel" />
+                <h3 className="m-0 text-base font-bold">Community Blog</h3>
+              </div>
+              <p className="text-sm opacity-90 leading-relaxed m-0">
+                A modern blogging platform powered by FastAPI and Next.js. Share your stories, read tech articles, and connect with authors.
+              </p>
+              <div className="pt-3 border-t border-border">
+                <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                  Navigation
+                </h4>
+                <ul className="text-sm space-y-1.5 list-none p-0 m-0">
+                  <li>
+                    <Link href="/" className="hover:underline flex items-center gap-1.5">
+                      <span>• All Articles</span>
+                    </Link>
+                  </li>
+                  {user && (
+                    <>
+                      <li>
+                        <Link href="/account" className="hover:underline flex items-center gap-1.5">
+                          <span>• Account Settings</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href={`/users/${user.id}/posts`} className="hover:underline flex items-center gap-1.5">
+                          <span>• My Articles</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
             </div>
           </aside>
         </div>
       </main>
       <footer>
-        <div className="container footer-inner">
-          © {new Date().getFullYear()} Corey Schafer
+        <div className="container footer-inner text-sm">
+          © {new Date().getFullYear()} FastAPI Blog. Built with Next.js & FastAPI.
         </div>
       </footer>
-      {createOpen && (
-        <Modal title="New Post" onClose={() => setCreateOpen(false)}>
-          <form onSubmit={createPost}>
-            <div className="modal-body">
-              <label>
-                Title
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Content
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={5}
-                  required
-                />
-              </label>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setCreateOpen(false)}
-              >
-                Cancel
-              </button>
-              <button className="btn primary" disabled={posting}>
-                {posting ? "Posting..." : "Post"}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
+
+      <CreatePostModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   );
 }

@@ -1,4 +1,8 @@
 export function apiPath(path: string) {
+  if (typeof window === "undefined") {
+    const backend = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+    return `${backend}${path}`;
+  }
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   return `${basePath}${path}`;
 }
@@ -55,6 +59,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  return fetch(apiPath(path), { ...init, headers });
+  const res = await fetch(apiPath(path), { ...init, headers });
+  if (res.status === 401 && typeof window !== "undefined" && !path.includes("/token")) {
+    clearToken();
+  }
+  return res;
 }
 

@@ -1,0 +1,111 @@
+import React from "react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { CreatePostModal } from "./CreatePostModal";
+import { postsService } from "@/lib/services";
+import { toast } from "sonner";
+
+describe("components/CreatePostModal", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("does not render when isOpen is false", () => {
+    render(<CreatePostModal isOpen={false} onClose={vi.fn()} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders modal form when isOpen is true", () => {
+    render(<CreatePostModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Give your article a clear title/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Write your article content here/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Publish Post/i })).toBeInTheDocument();
+  });
+
+  it("submits post successfully and calls onClose and onSuccess", async () => {
+    const handleClose = vi.fn();
+    const handleSuccess = vi.fn();
+    const mockPost = {
+      id: 1,
+      user_id: 1,
+      title: "New Test Article",
+      content: "This is test content",
+      date_posted: "2026-04-12T00:00:00Z",
+      author: {
+        id: 1,
+        username: "test",
+        email: "test@example.com",
+        image_file: null,
+        image_path: "/default.jpg",
+      },
+    };
+
+    vi.spyOn(postsService, "createPost").mockResolvedValueOnce(mockPost);
+
+    render(
+      <CreatePostModal
+        isOpen={true}
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+      />
+    );
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText(/Give your article a clear title/i),
+      "New Test Article"
+    );
+    await user.type(
+      screen.getByPlaceholderText(/Write your article content here/i),
+      "This is test content"
+    );
+
+    await user.click(screen.getByRole("button", { name: /Publish Post/i }));
+
+    await waitFor(() => {
+      expect(postsService.createPost).toHaveBeenCalledWith({
+        title: "New Test Article",
+        content: "This is test content",
+      });
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Post created successfully!");
+    expect(handleSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows error feedback when post creation fails", async () => {
+    vi.spyOn(postsService, "createPost").mockRejectedValueOnce(
+      new Error("Post limit reached")
+    );
+
+    render(<CreatePostModal isOpen={true} onClose={vi.fn()} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText(/Give your article a clear title/i),
+      "Failing Article"
+    );
+    await user.type(
+      screen.getByPlaceholderText(/Write your article content here/i),
+      "Some content"
+    );
+
+    await user.click(screen.getByRole("button", { name: /Publish Post/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Post limit reached");
+    });
+  });
+
+  it("calls onClose when Cancel button is clicked", async () => {
+    const handleClose = vi.fn();
+    render(<CreatePostModal isOpen={true} onClose={handleClose} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Cancel/i }));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+});

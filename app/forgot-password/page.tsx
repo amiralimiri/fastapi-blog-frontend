@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getErrorMessage, apiPath } from "@/lib/api";
+import { authService } from "@/lib/services";
 import { toast } from "sonner";
 import { KeyRound, Mail, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 
@@ -19,25 +19,17 @@ export default function ForgotPasswordPage() {
     setMsg("");
 
     try {
-      const r = await fetch(apiPath("/api/users/forgot-password"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      if (r.ok) {
-        const successMessage =
-          "If an account exists with this email, you will receive password reset instructions shortly.";
-        setMsg(successMessage);
-        toast.success("Reset link sent!");
-        setEmail("");
-      } else {
-        const errorMsg = getErrorMessage(await r.json());
-        setErr(errorMsg);
-        toast.error(errorMsg);
-      }
-    } catch {
-      const errorMsg = "Network error. Please check your connection and try again.";
+      await authService.forgotPassword(email);
+      const successMessage =
+        "If an account exists with this email, you will receive password reset instructions shortly.";
+      setMsg(successMessage);
+      toast.success("Reset link sent!");
+      setEmail("");
+    } catch (error: unknown) {
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : "Network error. Please check your connection and try again.";
       setErr(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -47,6 +39,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="content-section form-section max-w-md mx-auto">
+      <title>Forgot Password | FastAPI Blog</title>
       <div className="flex items-center gap-2 mb-2">
         <KeyRound className="text-steel" size={24} />
         <h2 className="text-2xl font-bold m-0">Forgot Password</h2>

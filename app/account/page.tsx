@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { apiFetch, getErrorMessage } from "@/lib/api";
+import { usersService } from "@/lib/services";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/lib/types";
 import { Modal } from "@/components/Modal";
@@ -30,6 +30,7 @@ export default function Account() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [del, setDel] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -45,26 +46,26 @@ export default function Account() {
     }
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
   async function updateProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setProfileLoading(true);
     try {
-      const r = await apiFetch(`/api/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email }),
-      });
-      if (r.status === 401) {
+      const d = await usersService.updateProfile(user.id, { username, email });
+      updateUser(d);
+      toast.success("Profile updated successfully!");
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && "status" in e && e.status === 401) {
         logout();
         router.push("/login");
         return;
       }
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      const d: User = await r.json();
-      updateUser(d);
-      toast.success("Profile updated successfully!");
-    } catch (e: unknown) {
       toast.error(
         e instanceof Error ? e.message : "Failed to update profile."
       );
@@ -77,14 +78,7 @@ export default function Account() {
     if (!user || !file) return;
     setUploadLoading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await apiFetch(`/api/users/${user.id}/picture`, {
-        method: "PATCH",
-        body: fd,
-      });
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      const d: User = await r.json();
+      const d = await usersService.uploadProfilePicture(user.id, file);
       updateUser(d);
       setFile(null);
       setPreview("");
@@ -106,15 +100,10 @@ export default function Account() {
     }
     setPasswordLoading(true);
     try {
-      const r = await apiFetch("/api/users/me/password", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          current_password: current,
-          new_password: newPass,
-        }),
+      await usersService.changePassword({
+        current_password: current,
+        new_password: newPass,
       });
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
       setCurrent("");
       setNewPass("");
       setConfirm("");
@@ -132,8 +121,7 @@ export default function Account() {
     if (!user) return;
     setDeleteLoading(true);
     try {
-      const r = await apiFetch(`/api/users/${user.id}`, { method: "DELETE" });
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
+      await usersService.deleteAccount(user.id);
       logout();
       toast.success("Account deleted successfully.");
       router.replace("/");
@@ -152,19 +140,25 @@ export default function Account() {
   }
   return (
     <>
+      <title>Account Settings | FastAPI Blog</title>
       <div className="content-section account-section">
         <h2 className="text-2xl font-bold tracking-tight mb-6">Account Settings</h2>
 
         <div className="profile-head flex items-center gap-5 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border">
-          <div className="relative w-24 h-24 rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700">
-            <Image
-              className="object-cover"
-              src={user.image_path || "/default.jpg"}
-              alt="Profile picture"
-              fill
-              sizes="96px"
-              unoptimized={user.image_path?.startsWith("http://127.0.0.1") || user.image_path?.startsWith("http://localhost")}
-            />
+          <div className="relative w-24 h-24 rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+            {!imageError ? (
+              <Image
+                className="object-cover"
+                src={user.image_path || "/default.jpg"}
+                alt="Profile picture"
+                fill
+                sizes="96px"
+                onError={() => setImageError(true)}
+                unoptimized={user.image_path?.startsWith("http://127.0.0.1") || user.image_path?.startsWith("http://localhost")}
+              />
+            ) : (
+              <UserIcon size={48} className="text-slate-400" />
+            )}
           </div>
           <div>
             <h3 className="text-xl font-bold m-0">{user.username}</h3>
@@ -196,7 +190,7 @@ export default function Account() {
                 required
               />
             </label>
-            <button className="btn primary inline-flex items-center gap-2" disabled={profileLoading}>
+            <button type="submit" className="btn primary inline-flex items-center gap-2" disabled={profileLoading}>
               {profileLoading && <Loader2 size={16} className="animate-spin" />}
               <span>{profileLoading ? "Updating..." : "Update Profile"}</span>
             </button>
@@ -288,7 +282,7 @@ export default function Account() {
                 required
               />
             </label>
-            <button className="btn primary inline-flex items-center gap-2" disabled={passwordLoading}>
+            <button type="submit" className="btn primary inline-flex items-center gap-2" disabled={passwordLoading}>
               {passwordLoading && <Loader2 size={16} className="animate-spin" />}
               <span>{passwordLoading ? "Saving..." : "Change Password"}</span>
             </button>

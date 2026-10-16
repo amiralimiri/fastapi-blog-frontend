@@ -1,11 +1,11 @@
 "use client";
 
-import { apiPath } from "@/lib/api";
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PostCard } from "@/components/PostCard";
 import type { PaginatedPosts, User } from "@/lib/types";
+import { usersService, postsService } from "@/lib/services";
 import { Loader2, RefreshCw, FileText, ArrowLeft } from "lucide-react";
 
 export default function UserPosts() {
@@ -22,14 +22,9 @@ export default function UserPosts() {
     setError("");
     setInitialLoading(true);
     try {
-      const [u, p] = await Promise.all([
-        fetch(apiPath(`/api/users/${userId}`)),
-        fetch(apiPath(`/api/users/${userId}/posts?skip=0&limit=${limit}`)),
-      ]);
-      if (!u.ok || !p.ok) throw new Error();
-      const [userData, d]: [User, PaginatedPosts] = await Promise.all([
-        u.json(),
-        p.json(),
+      const [userData, d] = await Promise.all([
+        usersService.getUserById(userId),
+        postsService.getUserPosts(userId, { skip: 0, limit }),
       ]);
       setUser(userData);
       setData(d);
@@ -51,11 +46,7 @@ export default function UserPosts() {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch(
-        apiPath(`/api/users/${userId}/posts?skip=${offset}&limit=${limit}`)
-      );
-      if (!r.ok) throw new Error();
-      const d: PaginatedPosts = await r.json();
+      const d = await postsService.getUserPosts(userId, { skip: offset, limit });
       setData((prev) =>
         prev ? { ...d, posts: [...prev.posts, ...d.posts] } : d
       );
@@ -105,6 +96,7 @@ export default function UserPosts() {
 
   return (
     <>
+      <title>{`${user.username}'s Posts | FastAPI Blog`}</title>
       <div className="mb-4">
         <Link
           href="/"

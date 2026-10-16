@@ -117,5 +117,15 @@ describe("lib/api.ts", () => {
       expect(headers.get("Content-Type")).toBe("application/json");
       expect(headers.get("X-Custom")).toBe("custom-val");
     });
+
+    it("clears token when apiFetch receives 401 status", async () => {
+      setToken("stale-token");
+      const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+      global.fetch = mockFetch;
+
+      const res = await apiFetch("/api/users/me");
+      expect(res.status).toBe(401);
+      expect(getToken()).toBeNull();
+    });
   });
 });

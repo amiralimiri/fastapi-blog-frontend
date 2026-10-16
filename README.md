@@ -88,12 +88,14 @@ npm start
 │   ├── layout.tsx            # Root layout with AuthProvider & Toaster
 │   └── page.tsx              # Home feed with pagination
 ├── components/
-│   ├── AppShell.tsx          # Navigation, theme switcher, post modal
+│   ├── AppShell.tsx          # Navigation, theme switcher, layout container
+│   ├── CreatePostModal.tsx   # Modal dialog for creating blog posts
 │   ├── Modal.tsx             # Accessible portal-based modal
 │   └── PostCard.tsx          # Article card with author avatar & date
 ├── context/
 │   └── AuthContext.tsx       # Reactive authentication context
 ├── lib/
+│   ├── services/             # Modular API services (posts, users, auth)
 │   ├── api.ts                # API client helpers & fetch wrappers
 │   ├── auth.ts               # Auth token re-exports
 │   ├── types.ts              # TypeScript interface definitions

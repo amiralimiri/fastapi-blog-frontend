@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { Post } from "@/lib/types";
-import { apiFetch, formatDate, getErrorMessage, apiPath } from "@/lib/api";
+import { formatDate } from "@/lib/api";
+import { postsService } from "@/lib/services";
 import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/Modal";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import {
   Trash2,
   Loader2,
   ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 
 export default function PostPage() {
@@ -31,25 +33,22 @@ export default function PostPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [error, setError] = useState("");
 
   const fetchPost = useCallback(async () => {
     try {
       setPageLoading(true);
-      const r = await fetch(apiPath(`/api/posts/${postId}`));
-      if (!r.ok) {
-        if (r.status === 404) {
-          router.replace("/not-found");
-          return;
-        }
-        throw new Error();
-      }
-      const d: Post = await r.json();
+      setError("");
+      const d = await postsService.getPostById(postId);
       setPost(d);
       setTitle(d.title);
       setContent(d.content);
-    } catch {
-      toast.error("Failed to load post. It may have been removed.");
-      router.replace("/");
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "status" in err && err.status === 404) {
+        router.replace("/not-found");
+        return;
+      }
+      setError("Unable to load post. Please check your connection and try again.");
     } finally {
       setPageLoading(false);
     }
@@ -68,21 +67,15 @@ export default function PostPage() {
 
     setLoading(true);
     try {
-      const r = await apiFetch(`/api/posts/${postId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content }),
-      });
-      if (r.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      const updated: Post = await r.json();
+      const updated = await postsService.updatePost(postId, { title, content });
       setPost(updated);
       setEdit(false);
       toast.success("Post updated successfully!");
     } catch (e: unknown) {
+      if (e && typeof e === "object" && "status" in e && e.status === 401) {
+        router.push("/login");
+        return;
+      }
       toast.error(
         e instanceof Error ? e.message : "Network error. Please try again."
       );
@@ -94,18 +87,17 @@ export default function PostPage() {
   async function remove() {
     setLoading(true);
     try {
-      const r = await apiFetch(`/api/posts/${postId}`, { method: "DELETE" });
-      if (r.status === 401) {
-        router.push("/login");
-        return;
-      }
-      if (!r.ok) throw new Error(getErrorMessage(await r.json()));
+      await postsService.deletePost(postId);
       toast.success("Post deleted successfully!");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("postsUpdated"));
       }
       router.push("/");
     } catch (e: unknown) {
+      if (e && typeof e === "object" && "status" in e && e.status === 401) {
+        router.push("/login");
+        return;
+      }
       toast.error(
         e instanceof Error ? e.message : "An error occurred while deleting."
       );
@@ -114,7 +106,7 @@ export default function PostPage() {
     }
   }
 
-  if (pageLoading || !post) {
+  if (pageLoading) {
     return (
       <article className="content-section article-card animate-pulse py-8">
         <div className="article-layout">
@@ -129,11 +121,33 @@ export default function PostPage() {
     );
   }
 
+  if (!post) {
+    return (
+      <article className="content-section article-card text-center py-12">
+        <p className="error-text mb-4">{error || "Unable to load post details."}</p>
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className="btn outline-primary inline-flex items-center gap-2"
+            onClick={fetchPost}
+          >
+            <RefreshCw size={16} />
+            <span>Retry</span>
+          </button>
+          <Link href="/" className="btn secondary inline-flex items-center gap-2">
+            <ArrowLeft size={16} />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+      </article>
+    );
+  }
+
   const owner = user?.id === post.user_id;
   const imageSrc = post.author.image_path || "/default.jpg";
 
   return (
     <>
+      <title>{`${post.title} | FastAPI Blog`}</title>
       <div className="mb-4">
         <Link
           href="/"

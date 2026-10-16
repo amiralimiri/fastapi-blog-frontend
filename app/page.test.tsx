@@ -164,4 +164,51 @@ describe("app/page (HomePage)", () => {
     });
     expect(screen.queryByRole("button", { name: /Load More Posts/i })).not.toBeInTheDocument();
   });
+
+  it("filters posts by title in search box", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify(mockPostsResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    render(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("First Post Title")).toBeInTheDocument();
+      expect(screen.getByText("Second Post Title")).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    const searchInput = screen.getByPlaceholderText(/Search posts by title/i);
+    await user.type(searchInput, "First");
+
+    expect(screen.getByText("First Post Title")).toBeInTheDocument();
+    expect(screen.queryByText("Second Post Title")).not.toBeInTheDocument();
+  });
+
+  it("shows empty search state when query does not match any posts", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify(mockPostsResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    render(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("First Post Title")).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    const searchInput = screen.getByPlaceholderText(/Search posts by title/i);
+    await user.type(searchInput, "NonExistentKeywordXYZ");
+
+    expect(screen.getByText("No matching posts found")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Try adjusting your search query/i)
+    ).toBeInTheDocument();
+  });
 });

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getErrorMessage, apiPath } from "@/lib/api";
+import { authService } from "@/lib/services";
 import { toast } from "sonner";
 import { UserPlus, Loader2, User as UserIcon, Mail, Lock } from "lucide-react";
 
@@ -31,23 +31,14 @@ export default function Register() {
     setError("");
 
     try {
-      const r = await fetch(apiPath("/api/users"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      if (!r.ok) {
-        const msg = getErrorMessage(await r.json());
-        setError(msg);
-        toast.error(msg);
-        return;
-      }
-
+      await authService.register({ username, email, password });
       toast.success("Account created successfully! You can now log in.");
       router.replace("/login");
-    } catch {
-      const msg = "Network error. Please check your connection and try again.";
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Network error. Please check your connection and try again.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -57,6 +48,7 @@ export default function Register() {
 
   return (
     <div className="content-section form-section max-w-md mx-auto">
+      <title>Register | FastAPI Blog</title>
       <div className="flex items-center gap-2 mb-2">
         <UserPlus className="text-steel" size={24} />
         <h2 className="text-2xl font-bold m-0">Register</h2>

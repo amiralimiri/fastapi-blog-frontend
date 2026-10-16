@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getErrorMessage, apiPath } from "@/lib/api";
+import { authService } from "@/lib/services";
 import { toast } from "sonner";
 import { KeyRound, Lock, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 
@@ -40,29 +40,19 @@ function ResetForm() {
     setMsg("");
 
     try {
-      const r = await fetch(apiPath("/api/users/reset-password"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, new_password: p1 }),
-      });
+      await authService.resetPassword({ token, new_password: p1 });
 
-      if (r.ok) {
-        const successMsg =
-          "Password reset successfully! You can now log in with your new password.";
-        setMsg(successMsg);
-        toast.success(successMsg);
-        setTimeout(() => {
-          router.replace("/login");
-        }, 1500);
-      } else {
-        const errorMsg =
-          getErrorMessage(await r.json()) +
-          " Please request a new password reset.";
-        setErr(errorMsg);
-        toast.error(errorMsg);
-      }
-    } catch {
-      const errorMsg = "Network error. Please check your connection and try again.";
+      const successMsg =
+        "Password reset successfully! You can now log in with your new password.";
+      setMsg(successMsg);
+      toast.success(successMsg);
+      setTimeout(() => {
+        router.replace("/login");
+      }, 1500);
+    } catch (error: unknown) {
+      const errorMsg =
+        (error instanceof Error ? error.message : "Network error. Please check your connection and try again.") +
+        " Please request a new password reset.";
       setErr(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -72,6 +62,7 @@ function ResetForm() {
 
   return (
     <div className="content-section form-section max-w-md mx-auto">
+      <title>Reset Password | FastAPI Blog</title>
       <div className="flex items-center gap-2 mb-2">
         <KeyRound className="text-steel" size={24} />
         <h2 className="text-2xl font-bold m-0">Reset Password</h2>

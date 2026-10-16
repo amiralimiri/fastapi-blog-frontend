@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getErrorMessage, apiPath } from "@/lib/api";
+import { authService } from "@/lib/services";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { LogIn, Loader2, Mail, Lock } from "lucide-react";
@@ -23,27 +23,15 @@ export default function Login() {
     setError("");
 
     try {
-      const fd = new FormData();
-      fd.append("username", email);
-      fd.append("password", password);
-      const r = await fetch(apiPath("/api/users/token"), {
-        method: "POST",
-        body: fd,
-      });
-
-      if (!r.ok) {
-        const msg = getErrorMessage(await r.json());
-        setError(msg);
-        toast.error(msg);
-        return;
-      }
-
-      const d = await r.json();
+      const d = await authService.login(email, password);
       await login(d.access_token);
       toast.success("Welcome back!");
       router.replace("/");
-    } catch {
-      const msg = "Network error. Please check your connection and try again.";
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Network error. Please check your connection and try again.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -53,6 +41,7 @@ export default function Login() {
 
   return (
     <div className="content-section form-section max-w-md mx-auto">
+      <title>Login | FastAPI Blog</title>
       <div className="flex items-center gap-2 mb-2">
         <LogIn className="text-steel" size={24} />
         <h2 className="text-2xl font-bold m-0">Login</h2>
