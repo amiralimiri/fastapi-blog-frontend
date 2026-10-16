@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       theme === "dark" ||
       (theme === "auto" &&
         typeof window !== "undefined" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
+        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
 
     document.documentElement.dataset.bsTheme = isDark ? "dark" : "light";
     localStorage.setItem("theme", theme);
