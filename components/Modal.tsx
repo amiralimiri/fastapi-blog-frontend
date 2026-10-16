@@ -1,5 +1,8 @@
 "use client";
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 export function Modal({
   title,
@@ -12,26 +15,42 @@ export function Modal({
   onClose: () => void;
   danger?: boolean;
 }) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    const fn = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    setMounted(true);
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [onClose]);
-  return (
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal-card">
         <div className={`modal-header ${danger ? "danger" : ""}`}>
-          <h3>{title}</h3>
-          <button className="icon-button" onClick={onClose} aria-label="Close">
-            ×
+          <h3 id="modal-title">{title}</h3>
+          <button
+            className="icon-button inline-flex items-center justify-center p-1 hover:opacity-80 transition"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={20} />
           </button>
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -61,3 +80,4 @@ export function AlertModal({
     </Modal>
   );
 }
+

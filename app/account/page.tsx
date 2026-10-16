@@ -1,39 +1,50 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { apiFetch, getErrorMessage } from "@/lib/api";
-import { getCurrentUser, invalidateUser, logout } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/lib/types";
-import { Modal, AlertModal } from "@/components/Modal";
+import { Modal } from "@/components/Modal";
+import { toast } from "sonner";
+import {
+  User as UserIcon,
+  Upload,
+  KeyRound,
+  LogOut,
+  Trash2,
+  Loader2,
+  CheckCircle,
+} from "lucide-react";
+
 export default function Account() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null),
-    [username, setUsername] = useState(""),
-    [email, setEmail] = useState(""),
-    [current, setCurrent] = useState(""),
-    [newPass, setNewPass] = useState(""),
-    [confirm, setConfirm] = useState(""),
-    [file, setFile] = useState<File | null>(null),
-    [preview, setPreview] = useState(""),
-    [alert, setAlert] = useState<{
-      kind: "success" | "error";
-      message: string;
-    } | null>(null),
-    [del, setDel] = useState(false),
-    [profileLoading, setProfileLoading] = useState(false),
-    [uploadLoading, setUploadLoading] = useState(false),
-    [passwordLoading, setPasswordLoading] = useState(false),
-    [deleteLoading, setDeleteLoading] = useState(false);
+  const { user, isLoading: authLoading, logout, updateUser } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [current, setCurrent] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [del, setDel] = useState(false);
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
-    getCurrentUser().then((u) => {
-      if (!u) router.replace("/login");
-      else {
-        setUser(u);
-        setUsername(u.username);
-        setEmail(u.email || "");
-      }
-    });
-  }, [router]);
+    if (!authLoading && !user) {
+      router.replace("/login");
+    } else if (user) {
+      setUsername(user.username);
+      setEmail(user.email || "");
+    }
+  }, [user, authLoading, router]);
+
   async function updateProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
@@ -45,20 +56,23 @@ export default function Account() {
         body: JSON.stringify({ username, email }),
       });
       if (r.status === 401) {
+        logout();
         router.push("/login");
         return;
       }
       if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      const d = await r.json();
-      invalidateUser();
-      setUser(d);
-      setAlert({ kind: "success", message: "Profile updated successfully!" });
-    } catch (e: any) {
-      setAlert({ kind: "error", message: e.message });
+      const d: User = await r.json();
+      updateUser(d);
+      toast.success("Profile updated successfully!");
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to update profile."
+      );
     } finally {
       setProfileLoading(false);
     }
   }
+
   async function upload() {
     if (!user || !file) return;
     setUploadLoading(true);
@@ -70,25 +84,24 @@ export default function Account() {
         body: fd,
       });
       if (!r.ok) throw new Error(getErrorMessage(await r.json()));
-      const d = await r.json();
-      invalidateUser();
-      setUser(d);
+      const d: User = await r.json();
+      updateUser(d);
       setFile(null);
       setPreview("");
-      setAlert({
-        kind: "success",
-        message: "Profile picture updated successfully!",
-      });
-    } catch (e: any) {
-      setAlert({ kind: "error", message: e.message });
+      toast.success("Profile picture updated successfully!");
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to upload picture."
+      );
     } finally {
       setUploadLoading(false);
     }
   }
+
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
     if (newPass !== confirm) {
-      setAlert({ kind: "error", message: "New passwords do not match." });
+      toast.error("New passwords do not match.");
       return;
     }
     setPasswordLoading(true);
@@ -105,13 +118,16 @@ export default function Account() {
       setCurrent("");
       setNewPass("");
       setConfirm("");
-      setAlert({ kind: "success", message: "Password changed successfully!" });
-    } catch (e: any) {
-      setAlert({ kind: "error", message: e.message });
+      toast.success("Password changed successfully!");
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to change password."
+      );
     } finally {
       setPasswordLoading(false);
     }
   }
+
   async function deleteAccount() {
     if (!user) return;
     setDeleteLoading(true);
@@ -119,34 +135,48 @@ export default function Account() {
       const r = await apiFetch(`/api/users/${user.id}`, { method: "DELETE" });
       if (!r.ok) throw new Error(getErrorMessage(await r.json()));
       logout();
+      toast.success("Account deleted successfully.");
       router.replace("/");
-    } catch (e: any) {
-      setAlert({ kind: "error", message: e.message });
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to delete account."
+      );
       setDel(false);
     } finally {
       setDeleteLoading(false);
     }
   }
-  if (!user) return <div className="loading">Loading account...</div>;
+
+  if (authLoading || !user) {
+    return <div className="loading">Loading account...</div>;
+  }
   return (
     <>
       <div className="content-section account-section">
-        <h2>Account Settings</h2>
-        <div className="profile-head">
-          <img
-            className="account-img"
-            src={user.image_path}
-            alt="Profile picture"
-            width={125}
-            height={125}
-          />
+        <h2 className="text-2xl font-bold tracking-tight mb-6">Account Settings</h2>
+
+        <div className="profile-head flex items-center gap-5 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border">
+          <div className="relative w-24 h-24 rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700">
+            <Image
+              className="object-cover"
+              src={user.image_path || "/default.jpg"}
+              alt="Profile picture"
+              fill
+              sizes="96px"
+              unoptimized={user.image_path?.startsWith("http://127.0.0.1") || user.image_path?.startsWith("http://localhost")}
+            />
+          </div>
           <div>
-            <h3>{user.username}</h3>
-            <p>{user.email}</p>
+            <h3 className="text-xl font-bold m-0">{user.username}</h3>
+            <p className="text-sm text-muted-foreground m-0 mt-1">{user.email}</p>
           </div>
         </div>
-        <div className="section-block">
-          <h3>Update Profile</h3>
+
+        <div className="section-block mt-8">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <UserIcon size={18} />
+            <span>Update Profile</span>
+          </h3>
           <form onSubmit={updateProfile}>
             <label>
               Username
@@ -166,24 +196,33 @@ export default function Account() {
                 required
               />
             </label>
-            <button className="btn primary" disabled={profileLoading}>
-              Update Profile
+            <button className="btn primary inline-flex items-center gap-2" disabled={profileLoading}>
+              {profileLoading && <Loader2 size={16} className="animate-spin" />}
+              <span>{profileLoading ? "Updating..." : "Update Profile"}</span>
             </button>
           </form>
         </div>
+
         <hr />
+
         <div className="section-block">
-          <h3>Profile Picture</h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Upload size={18} />
+            <span>Profile Picture</span>
+          </h3>
           {preview && (
-            <img
-              className="preview-img"
-              src={preview}
-              alt="Image preview"
-              width={150}
-              height={150}
-            />
+            <div className="relative w-32 h-32 rounded-full overflow-hidden mb-4 border-2 border-primary">
+              <Image
+                className="object-cover"
+                src={preview}
+                alt="Image preview"
+                fill
+                sizes="128px"
+                unoptimized
+              />
+            </div>
           )}
-          <div className="upload-row">
+          <div className="upload-row flex items-center gap-3">
             <input
               type="file"
               accept="image/*"
@@ -197,20 +236,25 @@ export default function Account() {
               }}
             />
             <button
-              className="btn primary"
+              className="btn primary inline-flex items-center gap-2"
               onClick={upload}
               disabled={!file || uploadLoading}
             >
-              {uploadLoading ? "Uploading..." : "Upload"}
+              {uploadLoading && <Loader2 size={16} className="animate-spin" />}
+              <span>{uploadLoading ? "Uploading..." : "Upload"}</span>
             </button>
           </div>
-          <small>
+          <small className="text-muted-foreground text-xs mt-1 block">
             Maximum file size: 5MB. Supported formats: JPEG, PNG, GIF, WebP.
           </small>
         </div>
+
         <hr />
         <div className="section-block">
-          <h3>Change Password</h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <KeyRound size={18} />
+            <span>Change Password</span>
+          </h3>
           <form onSubmit={changePassword}>
             <label>
               Current Password
@@ -230,7 +274,9 @@ export default function Account() {
                 minLength={8}
                 required
               />
-              <small>Password must be at least 8 characters.</small>
+              <small className="text-muted-foreground text-xs mt-0.5 block">
+                Password must be at least 8 characters.
+              </small>
             </label>
             <label>
               Confirm New Password
@@ -242,35 +288,46 @@ export default function Account() {
                 required
               />
             </label>
-            <button className="btn primary" disabled={passwordLoading}>
-              Change Password
+            <button className="btn primary inline-flex items-center gap-2" disabled={passwordLoading}>
+              {passwordLoading && <Loader2 size={16} className="animate-spin" />}
+              <span>{passwordLoading ? "Saving..." : "Change Password"}</span>
             </button>
           </form>
         </div>
+
         <hr />
+
         <div className="section-block">
           <button
-            className="btn light"
+            className="btn secondary inline-flex items-center gap-2"
             onClick={() => {
               logout();
               router.replace("/");
             }}
           >
-            Logout
+            <LogOut size={16} />
+            <span>Logout</span>
           </button>
         </div>
+
         <hr />
+
         <div className="section-block">
-          <h3 className="danger-text">Danger Zone</h3>
-          <p>
+          <h3 className="danger-text flex items-center gap-2 mb-2 font-bold">
+            <Trash2 size={18} />
+            <span>Danger Zone</span>
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
             Once you delete your account, there is no going back. All your posts
-            will also be deleted.
+            will also be permanently deleted.
           </p>
-          <button className="btn outline-danger" onClick={() => setDel(true)}>
-            Delete Account
+          <button className="btn outline-danger inline-flex items-center gap-2 text-sm" onClick={() => setDel(true)}>
+            <Trash2 size={15} />
+            <span>Delete Account</span>
           </button>
         </div>
       </div>
+
       {del && (
         <Modal title="Delete Account?" danger onClose={() => setDel(false)}>
           <div className="modal-body">
@@ -284,21 +341,15 @@ export default function Account() {
               Cancel
             </button>
             <button
-              className="btn danger"
+              className="btn danger inline-flex items-center gap-1.5"
               onClick={deleteAccount}
               disabled={deleteLoading}
             >
-              Delete Account
+              {deleteLoading && <Loader2 size={15} className="animate-spin" />}
+              <span>{deleteLoading ? "Deleting..." : "Delete Account"}</span>
             </button>
           </div>
         </Modal>
-      )}
-      {alert && (
-        <AlertModal
-          kind={alert.kind}
-          message={alert.message}
-          onClose={() => setAlert(null)}
-        />
       )}
     </>
   );
