@@ -350,6 +350,32 @@ describe("Backend Adapter Seams 2, 3, 5", () => {
       expect(init.body).toBeInstanceOf(FormData);
     });
 
+    it("resolves relative avatar paths to a fully-qualified URL in the browser when config.baseUrl and NEXT_PUBLIC_BACKEND_URL are unset", async () => {
+      const prevEnv = process.env.NEXT_PUBLIC_BACKEND_URL;
+      delete process.env.NEXT_PUBLIC_BACKEND_URL;
+      try {
+        const customFetch = vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({ id: 1, username: "user", image_path: "/profile_pics/avatar.png" }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+
+        const adapter = createBackendAdapter({
+          fetch: customFetch,
+          tokenStorage: mockStorage,
+        });
+
+        const user = await adapter.users.getCurrentUser();
+        const expectedOrigin = window.location.origin;
+        expect(user.avatarUrl).toBe(`${expectedOrigin}/profile_pics/avatar.png`);
+      } finally {
+        if (prevEnv !== undefined) {
+          process.env.NEXT_PUBLIC_BACKEND_URL = prevEnv;
+        }
+      }
+    });
+
     it("users.changePassword sends PATCH request with current and new passwords", async () => {
       const customFetch = vi.fn().mockResolvedValue(
         new Response(null, { status: 200 })

@@ -61,11 +61,12 @@ export function createBackendAdapter(config: BackendAdapterConfig = {}): Backend
     if (typeof window === "undefined") {
       return process.env.BACKEND_URL || "http://127.0.0.1:8000";
     }
-    return (
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BASE_PATH ||
-      ""
-    );
+    if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+      return process.env.NEXT_PUBLIC_BACKEND_URL;
+    }
+    const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    return `${origin}${basePath}`;
   };
 
   const unauthorizedListeners = new Set<() => void>();
@@ -248,10 +249,8 @@ export function createBackendAdapter(config: BackendAdapterConfig = {}): Backend
     },
 
     updateProfile,
-    updateUser: updateProfile,
 
     uploadProfilePicture,
-    uploadAvatar: uploadProfilePicture,
 
     async changePassword(payload: ChangePasswordPayload): Promise<void> {
       await request<void>("/api/users/me/password", {
@@ -264,7 +263,6 @@ export function createBackendAdapter(config: BackendAdapterConfig = {}): Backend
     },
 
     deleteAccount,
-    deleteUser: deleteAccount,
   };
 
   const auth = {

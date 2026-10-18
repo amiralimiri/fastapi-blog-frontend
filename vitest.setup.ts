@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { vi } from "vitest";
+import { vi, beforeEach } from "vitest";
 
 // Mock next/navigation
 const mockRouter = {
@@ -11,6 +11,15 @@ const mockRouter = {
   forward: vi.fn(),
   prefetch: vi.fn(),
 };
+
+beforeEach(() => {
+  mockRouter.push.mockReset();
+  mockRouter.replace.mockReset();
+  mockRouter.refresh.mockReset();
+  mockRouter.back.mockReset();
+  mockRouter.forward.mockReset();
+  mockRouter.prefetch.mockReset();
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => mockRouter),

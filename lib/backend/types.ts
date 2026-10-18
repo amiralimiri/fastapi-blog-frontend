@@ -88,12 +88,9 @@ export interface BackendAdapter {
     getCurrentUser(): Promise<NormalizedUser>;
     getUserById(userId: string | number): Promise<NormalizedUser>;
     updateProfile(userId: string | number, payload: UpdateProfilePayload): Promise<NormalizedUser>;
-    updateUser(userId: string | number, payload: UpdateProfilePayload): Promise<NormalizedUser>;
     uploadProfilePicture(userId: string | number, file: File): Promise<NormalizedUser>;
-    uploadAvatar(userId: string | number, file: File): Promise<NormalizedUser>;
     changePassword(payload: ChangePasswordPayload): Promise<void>;
     deleteAccount(userId: string | number): Promise<void>;
-    deleteUser(userId: string | number): Promise<void>;
   };
 
   auth: {

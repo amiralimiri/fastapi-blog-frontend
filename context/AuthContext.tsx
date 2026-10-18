@@ -54,7 +54,6 @@ export function AuthProvider({
       setUser(data);
       return data;
     } catch {
-      adapter.clearToken();
       setUser(null);
       return null;
     } finally {

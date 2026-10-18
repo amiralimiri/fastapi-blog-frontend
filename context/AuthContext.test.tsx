@@ -110,6 +110,30 @@ describe("context/AuthContext", () => {
     expect(router.replace).toHaveBeenCalledWith("/login");
   });
 
+  it("retains stored credentials/token when a non-401 error (network error or 500) occurs", async () => {
+    const router = useRouter();
+    backend.setToken("valid-token-on-server-error");
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Internal Server Error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("ready");
+    });
+    expect(screen.getByTestId("user")).toHaveTextContent("anonymous");
+    expect(backend.getToken()).toBe("valid-token-on-server-error");
+    expect(router.replace).not.toHaveBeenCalledWith("/login");
+  });
+
   it("handles login flow and updates state", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockUser), {
