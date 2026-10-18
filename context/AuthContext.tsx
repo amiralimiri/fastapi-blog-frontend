@@ -1,27 +1,48 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { clearToken, getToken, setToken } from "@/lib/api";
-import { usersService } from "@/lib/services";
+import { useRouter } from "next/navigation";
+import { backend } from "@/lib/backend";
+import type { BackendAdapter, NormalizedUser } from "@/lib/backend/types";
 import type { User } from "@/lib/types";
 
+export type AuthUser = NormalizedUser;
+
 interface AuthContextType {
-  user: User | null;
+  user: NormalizedUser | null;
   isLoading: boolean;
-  login: (token: string) => Promise<User | null>;
+  login: (token: string) => Promise<NormalizedUser | null>;
   logout: () => void;
-  updateUser: (user: User) => void;
-  refreshUser: () => Promise<User | null>;
+  updateUser: (user: NormalizedUser | User) => void;
+  refreshUser: () => Promise<NormalizedUser | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({
+  children,
+  adapter = backend,
+}: {
+  children: React.ReactNode;
+  adapter?: BackendAdapter;
+}) {
+  const router = useRouter();
+  const [user, setUser] = useState<NormalizedUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const fetchUser = useCallback(async (): Promise<User | null> => {
-    const token = getToken();
+  // Subscribe to the adapter's onUnauthorized seam at initialization
+  useEffect(() => {
+    const unsubscribe = adapter.onUnauthorized(() => {
+      setUser(null);
+      router.replace("/login");
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [adapter, router]);
+
+  const fetchUser = useCallback(async (): Promise<NormalizedUser | null> => {
+    const token = adapter.getToken();
     if (!token) {
       setUser(null);
       setIsLoading(false);
@@ -29,35 +50,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const data = await usersService.getCurrentUser();
+      const data = await adapter.users.getCurrentUser();
       setUser(data);
       return data;
     } catch {
-      clearToken();
+      adapter.clearToken();
       setUser(null);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [adapter]);
 
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
-  const login = async (token: string): Promise<User | null> => {
-    setToken(token);
+  const login = async (token: string): Promise<NormalizedUser | null> => {
+    adapter.setToken(token);
     setIsLoading(true);
     return fetchUser();
   };
 
   const logout = () => {
-    clearToken();
+    adapter.clearToken();
     setUser(null);
   };
 
-  const updateUser = (updated: User) => {
-    setUser(updated);
+  const updateUser = (updated: NormalizedUser | User) => {
+    const avatar = updated.avatarUrl || updated.image_path || "/default.jpg";
+    setUser({
+      id: updated.id,
+      username: updated.username,
+      email: updated.email,
+      avatarUrl: avatar,
+      image_path: avatar,
+    });
   };
 
   const refreshUser = async () => {

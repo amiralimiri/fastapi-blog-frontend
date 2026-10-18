@@ -2,8 +2,9 @@ import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "./AuthContext";
-import { setToken, getToken } from "@/lib/api";
+import { backend, createBackendAdapter } from "@/lib/backend";
 
 const mockUser = {
   id: 42,
@@ -65,7 +66,7 @@ describe("context/AuthContext", () => {
   });
 
   it("auto-fetches and sets user when a valid token exists in storage", async () => {
-    setToken("existing-jwt-token");
+    backend.setToken("existing-jwt-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockUser), {
         status: 200,
@@ -87,7 +88,8 @@ describe("context/AuthContext", () => {
   });
 
   it("clears token and sets user to null if user fetch returns 401", async () => {
-    setToken("expired-token");
+    const router = useRouter();
+    backend.setToken("expired-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ detail: "Token expired" }), {
         status: 401,
@@ -104,7 +106,8 @@ describe("context/AuthContext", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("ready");
     });
     expect(screen.getByTestId("user")).toHaveTextContent("anonymous");
-    expect(getToken()).toBeNull();
+    expect(backend.getToken()).toBeNull();
+    expect(router.replace).toHaveBeenCalledWith("/login");
   });
 
   it("handles login flow and updates state", async () => {
@@ -131,11 +134,11 @@ describe("context/AuthContext", () => {
     await waitFor(() => {
       expect(screen.getByTestId("user")).toHaveTextContent("testuser");
     });
-    expect(getToken()).toBe("valid-token-xyz");
+    expect(backend.getToken()).toBe("valid-token-xyz");
   });
 
   it("handles logout flow and clears state", async () => {
-    setToken("my-token");
+    backend.setToken("my-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockUser), {
         status: 200,
@@ -157,11 +160,11 @@ describe("context/AuthContext", () => {
     await user.click(screen.getByText("Logout Button"));
 
     expect(screen.getByTestId("user")).toHaveTextContent("anonymous");
-    expect(getToken()).toBeNull();
+    expect(backend.getToken()).toBeNull();
   });
 
   it("updates user state immediately via updateUser", async () => {
-    setToken("my-token");
+    backend.setToken("my-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockUser), {
         status: 200,
@@ -183,5 +186,69 @@ describe("context/AuthContext", () => {
     await user.click(screen.getByText("Update Button"));
 
     expect(screen.getByTestId("user")).toHaveTextContent("updated_user");
+  });
+
+  it("subscribes to onUnauthorized and redirects to /login on 401 revocation", async () => {
+    const router = useRouter();
+    let triggerUnauthorized: (() => void) | null = null;
+    const customAdapter = createBackendAdapter({
+      tokenStorage: {
+        getToken: () => "active-session-token",
+        setToken: vi.fn(),
+        clearToken: vi.fn(),
+      },
+      fetch: vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(mockUser), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      ),
+    });
+
+    const origOnUnauthorized = customAdapter.onUnauthorized.bind(customAdapter);
+    vi.spyOn(customAdapter, "onUnauthorized").mockImplementation((cb) => {
+      triggerUnauthorized = cb;
+      return origOnUnauthorized(cb);
+    });
+
+    render(
+      <AuthProvider adapter={customAdapter}>
+        <TestConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user")).toHaveTextContent("testuser");
+    });
+
+    // Fire the onUnauthorized subscription callback
+    act(() => {
+      triggerUnauthorized?.();
+    });
+
+    expect(screen.getByTestId("user")).toHaveTextContent("anonymous");
+    expect(router.replace).toHaveBeenCalledWith("/login");
+  });
+
+  it("unsubscribes from onUnauthorized when AuthProvider unmounts", () => {
+    const unsubscribeSpy = vi.fn();
+    const customAdapter = createBackendAdapter({
+      tokenStorage: {
+        getToken: () => null,
+        setToken: vi.fn(),
+        clearToken: vi.fn(),
+      },
+    });
+    vi.spyOn(customAdapter, "onUnauthorized").mockReturnValue(unsubscribeSpy);
+
+    const { unmount } = render(
+      <AuthProvider adapter={customAdapter}>
+        <TestConsumer />
+      </AuthProvider>
+    );
+
+    expect(customAdapter.onUnauthorized).toHaveBeenCalled();
+    unmount();
+    expect(unsubscribeSpy).toHaveBeenCalled();
   });
 });

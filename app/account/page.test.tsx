@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import Account from "./page";
 import { AuthProvider } from "@/context/AuthContext";
 import { usersService } from "@/lib/services";
+import { backend } from "@/lib/backend";
 import { setToken } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -12,14 +13,15 @@ const mockUser = {
   id: 1,
   username: "myuser",
   email: "myuser@example.com",
-  image_file: null,
   image_path: "/profile.jpg",
+  avatarUrl: "/profile.jpg",
 };
 
 describe("app/account/page (Account)", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue(mockUser);
   });
 
   it("renders user information when authenticated", async () => {

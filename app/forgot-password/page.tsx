@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { authService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { toast } from "sonner";
 import { KeyRound, Mail, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 
@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
     setMsg("");
 
     try {
-      await authService.forgotPassword(email);
+      await backend.auth.forgotPassword(email);
       const successMessage =
         "If an account exists with this email, you will receive password reset instructions shortly.";
       setMsg(successMessage);
@@ -27,7 +27,9 @@ export default function ForgotPasswordPage() {
       setEmail("");
     } catch (error: unknown) {
       const errorMsg =
-        error instanceof Error
+        error instanceof BackendError
+          ? error.message
+          : error instanceof Error
           ? error.message
           : "Network error. Please check your connection and try again.";
       setErr(errorMsg);

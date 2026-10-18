@@ -3,15 +3,17 @@ import React from "react";
 import { vi } from "vitest";
 
 // Mock next/navigation
+const mockRouter = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  prefetch: vi.fn(),
+};
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    refresh: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    prefetch: vi.fn(),
-  }),
+  useRouter: vi.fn(() => mockRouter),
   usePathname: () => "/",
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useParams: () => ({ postId: "1", userId: "1" }),

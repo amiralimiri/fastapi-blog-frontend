@@ -40,7 +40,9 @@ class BrowserTokenStorage implements BackendTokenStorage {
 
 export function createBackendAdapter(config: BackendAdapterConfig = {}): BackendAdapter {
   const tokenStorage = config.tokenStorage || new BrowserTokenStorage();
-  const fetchTransport = config.fetch || globalThis.fetch.bind(globalThis);
+  const fetchTransport =
+    config.fetch ||
+    ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
 
   const getBaseUrl = (): string => {
     if (config.baseUrl !== undefined) {

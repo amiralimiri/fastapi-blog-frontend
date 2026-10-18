@@ -6,6 +6,7 @@ import PostPage from "./page";
 import { AuthProvider } from "@/context/AuthContext";
 import { setToken } from "@/lib/api";
 import { postsService, usersService } from "@/lib/services";
+import { backend } from "@/lib/backend";
 import type { Post } from "@/lib/types";
 
 const mockPostDetail: Post = {
@@ -65,6 +66,13 @@ describe("app/posts/[postId]/page (PostPage)", () => {
       image_file: null,
       image_path: "/static/default.jpg",
     });
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
+      id: 10,
+      username: "super_author",
+      email: "super@example.com",
+      avatarUrl: "/static/default.jpg",
+      image_path: "/static/default.jpg",
+    });
 
     render(
       <AuthProvider>
@@ -87,6 +95,13 @@ describe("app/posts/[postId]/page (PostPage)", () => {
       username: "some_reader",
       email: "reader@example.com",
       image_file: null,
+      image_path: "/static/default.jpg",
+    });
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
+      id: 999,
+      username: "some_reader",
+      email: "reader@example.com",
+      avatarUrl: "/static/default.jpg",
       image_path: "/static/default.jpg",
     });
 

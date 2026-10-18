@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { LogIn, Loader2, Mail, Lock } from "lucide-react";
@@ -23,13 +23,15 @@ export default function Login() {
     setError("");
 
     try {
-      const d = await authService.login(email, password);
+      const d = await backend.auth.login(email, password);
       await login(d.access_token);
       toast.success("Welcome back!");
       router.replace("/");
     } catch (err: unknown) {
       const msg =
-        err instanceof Error
+        err instanceof BackendError
+          ? err.message
+          : err instanceof Error
           ? err.message
           : "Network error. Please check your connection and try again.";
       setError(msg);
@@ -59,15 +61,15 @@ export default function Login() {
       <form onSubmit={submit}>
         <label>
           <span className="flex items-center gap-1.5 mb-1 text-sm font-medium">
-            <Mail size={14} className="opacity-70" /> Email
+            <Mail size={14} className="opacity-70" /> Email or Username
           </span>
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            autoComplete="email"
+            autoComplete="username"
           />
         </label>
         <label>

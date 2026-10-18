@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { toast } from "sonner";
 import { UserPlus, Loader2, User as UserIcon, Mail, Lock } from "lucide-react";
 
@@ -31,12 +31,14 @@ export default function Register() {
     setError("");
 
     try {
-      await authService.register({ username, email, password });
+      await backend.auth.register({ username, email, password });
       toast.success("Account created successfully! You can now log in.");
       router.replace("/login");
     } catch (err: unknown) {
       const msg =
-        err instanceof Error
+        err instanceof BackendError
+          ? err.message
+          : err instanceof Error
           ? err.message
           : "Network error. Please check your connection and try again.";
       setError(msg);

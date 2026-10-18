@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] `AuthProvider` uses the Backend Adapter for fetching the current user and managing token lifecycle
-- [ ] `AuthProvider` subscribes to the adapter's `onUnauthorized` seam at initialization, clearing user state and routing to `/login` when a 401 occurs
-- [ ] Login page delegates credential exchange to the Backend Adapter and displays returned `BackendError` messages without triggering global unauthorized navigation
-- [ ] Register page uses the adapter's auth namespace to create accounts and surface duplicate username/email validation errors
-- [ ] Forgot password and reset password pages consume the adapter's auth methods with normalized error and success handling
-- [ ] Unit and integration tests verify session hydration, unauthorized redirect reactions, and credential validation
+- [x] `AuthProvider` uses the Backend Adapter for fetching the current user and managing token lifecycle
+- [x] `AuthProvider` subscribes to the adapter's `onUnauthorized` seam at initialization, clearing user state and routing to `/login` when a 401 occurs
+- [x] Login page delegates credential exchange to the Backend Adapter and displays returned `BackendError` messages without triggering global unauthorized navigation
+- [x] Register page uses the adapter's auth namespace to create accounts and surface duplicate username/email validation errors
+- [x] Forgot password and reset password pages consume the adapter's auth methods with normalized error and success handling
+- [x] Unit and integration tests verify session hydration, unauthorized redirect reactions, and credential validation

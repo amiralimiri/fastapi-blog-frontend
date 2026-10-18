@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ForgotPasswordPage from "./page";
-import { authService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { toast } from "sonner";
 
 describe("app/forgot-password/page", () => {
@@ -19,7 +19,7 @@ describe("app/forgot-password/page", () => {
   });
 
   it("sends reset link successfully and shows success notice", async () => {
-    const forgotSpy = vi.spyOn(authService, "forgotPassword").mockResolvedValue();
+    const forgotSpy = vi.spyOn(backend.auth, "forgotPassword").mockResolvedValue();
 
     render(<ForgotPasswordPage />);
 
@@ -38,8 +38,8 @@ describe("app/forgot-password/page", () => {
   });
 
   it("displays error message when request fails", async () => {
-    vi.spyOn(authService, "forgotPassword").mockRejectedValue(
-      new Error("User not found")
+    vi.spyOn(backend.auth, "forgotPassword").mockRejectedValue(
+      new BackendError(404, "User not found")
     );
 
     render(<ForgotPasswordPage />);

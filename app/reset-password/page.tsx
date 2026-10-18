@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { authService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { toast } from "sonner";
 import { KeyRound, Lock, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 
@@ -40,7 +40,7 @@ function ResetForm() {
     setMsg("");
 
     try {
-      await authService.resetPassword({ token, new_password: p1 });
+      await backend.auth.resetPassword({ token, new_password: p1 });
 
       const successMsg =
         "Password reset successfully! You can now log in with your new password.";
@@ -51,7 +51,11 @@ function ResetForm() {
       }, 1500);
     } catch (error: unknown) {
       const errorMsg =
-        (error instanceof Error ? error.message : "Network error. Please check your connection and try again.") +
+        (error instanceof BackendError
+          ? error.message
+          : error instanceof Error
+          ? error.message
+          : "Network error. Please check your connection and try again.") +
         " Please request a new password reset.";
       setErr(errorMsg);
       toast.error(errorMsg);
