@@ -46,8 +46,6 @@ export interface UpdateProfilePayload {
   email?: string;
 }
 
-export type UpdateUserPayload = UpdateProfilePayload;
-
 export interface ChangePasswordPayload {
   current_password?: string;
   new_password: string;

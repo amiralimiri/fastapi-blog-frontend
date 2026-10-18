@@ -153,6 +153,34 @@ describe("Backend Adapter Seams 2, 3, 5", () => {
       expect(unauthorizedSpy).not.toHaveBeenCalled();
     });
 
+    it("does not dispatch onUnauthorized callbacks on 401 when the request carried no authentication credentials", async () => {
+      mockStorage.token = null;
+      const customFetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Authentication required" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const adapter = createBackendAdapter({
+        baseUrl: "https://api.example.com",
+        fetch: customFetch,
+        tokenStorage: mockStorage,
+      });
+
+      const unauthorizedSpy = vi.fn();
+      adapter.onUnauthorized(unauthorizedSpy);
+
+      await expect(adapter.posts.getPostById(123)).rejects.toMatchObject({
+        name: "BackendError",
+        status: 401,
+        message: "Authentication required",
+      });
+
+      expect(unauthorizedSpy).not.toHaveBeenCalled();
+      expect(adapter.getToken()).toBeNull();
+    });
+
     it("translates fetch network rejections into BackendError with status 0", async () => {
       const customFetch = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
 

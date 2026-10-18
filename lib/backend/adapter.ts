@@ -127,7 +127,8 @@ export function createBackendAdapter(config: BackendAdapterConfig = {}): Backend
       throw normalizeBackendError(0, "A network error occurred. Please check your connection.");
     }
 
-    if (res.status === 401 && !isExempt401) {
+    const hasAuth = headers.has("Authorization") || Boolean(token);
+    if (res.status === 401 && !isExempt401 && hasAuth) {
       dispatchUnauthorized();
     }
 

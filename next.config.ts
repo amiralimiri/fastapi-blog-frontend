@@ -46,6 +46,7 @@ const nextConfig = {
     return [
       { source: "/api/:path*", destination: `${backend}/api/:path*` },
       { source: "/static/:path*", destination: `${backend}/static/:path*` },
+      { source: "/profile_pics/:path*", destination: `${backend}/profile_pics/:path*` },
     ];
   },
 };
