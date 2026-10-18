@@ -2,8 +2,9 @@ export type User = {
   id: number;
   username: string;
   email?: string;
-  image_file: string | null;
-  image_path: string;
+  avatarUrl?: string;
+  image_path?: string;
+  image_file?: string | null;
 };
 
 export type Post = {
