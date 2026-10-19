@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Implement Core Feed Module and Invalidation Registry
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] User posts page delegates author post pagination and error state to the Feed module using the route user ID
-- [ ] User profile information continues to load reliably and displays author metadata
-- [ ] Initial pulse skeletons render during initial profile and post fetch
-- [ ] Paginated post traversal appends older posts seamlessly via the Feed module interface
-- [ ] Error notices and retry controls allow recovery from network failures
-- [ ] User posts integration test suite passes completely with no regressions
+- [x] User posts page delegates author post pagination and error state to the Feed module using the route user ID
+- [x] User profile information continues to load reliably and displays author metadata
+- [x] Initial pulse skeletons render during initial profile and post fetch
+- [x] Paginated post traversal appends older posts seamlessly via the Feed module interface
+- [x] Error notices and retry controls allow recovery from network failures
+- [x] User posts integration test suite passes completely with no regressions
