@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { usersService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { useAuth } from "@/context/AuthContext";
-import type { User } from "@/lib/types";
 import { Modal } from "@/components/Modal";
 import { toast } from "sonner";
 import {
@@ -15,7 +14,6 @@ import {
   LogOut,
   Trash2,
   Loader2,
-  CheckCircle,
 } from "lucide-react";
 
 export default function Account() {
@@ -37,38 +35,68 @@ export default function Account() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const initialLoadedUserIdRef = useRef<number | null>(null);
+  const previewRef = useRef<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/login");
-    } else if (user) {
+    } else if (user && initialLoadedUserIdRef.current !== user.id) {
+      initialLoadedUserIdRef.current = user.id;
       setUsername(user.username);
       setEmail(user.email || "");
     }
   }, [user, authLoading, router]);
 
+  const revokePreview = () => {
+    if (previewRef.current) {
+      if (typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+        URL.revokeObjectURL(previewRef.current);
+      }
+      previewRef.current = "";
+    }
+  };
+
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      revokePreview();
     };
-  }, [preview]);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    revokePreview();
+    setFile(f);
+    if (f) {
+      if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        const url = URL.createObjectURL(f);
+        previewRef.current = url;
+        setPreview(url);
+      }
+    } else {
+      setPreview("");
+    }
+  };
 
   async function updateProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setProfileLoading(true);
     try {
-      const d = await usersService.updateProfile(user.id, { username, email });
+      const d = await backend.users.updateProfile(user.id, { username, email });
       updateUser(d);
+      setUsername(d.username);
+      setEmail(d.email || "");
       toast.success("Profile updated successfully!");
     } catch (e: unknown) {
-      if (e && typeof e === "object" && "status" in e && e.status === 401) {
-        logout();
-        router.push("/login");
-        return;
-      }
-      toast.error(
-        e instanceof Error ? e.message : "Failed to update profile."
-      );
+      const msg =
+        e instanceof BackendError
+          ? e.message
+          : e instanceof Error
+          ? e.message
+          : "Failed to update profile.";
+      toast.error(msg);
     } finally {
       setProfileLoading(false);
     }
@@ -78,15 +106,23 @@ export default function Account() {
     if (!user || !file) return;
     setUploadLoading(true);
     try {
-      const d = await usersService.uploadProfilePicture(user.id, file);
+      const d = await backend.users.uploadProfilePicture(user.id, file);
       updateUser(d);
+      revokePreview();
       setFile(null);
       setPreview("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       toast.success("Profile picture updated successfully!");
     } catch (e: unknown) {
-      toast.error(
-        e instanceof Error ? e.message : "Failed to upload picture."
-      );
+      const msg =
+        e instanceof BackendError
+          ? e.message
+          : e instanceof Error
+          ? e.message
+          : "Failed to upload picture.";
+      toast.error(msg);
     } finally {
       setUploadLoading(false);
     }
@@ -94,13 +130,21 @@ export default function Account() {
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
+    if (!current) {
+      toast.error("Current password is required.");
+      return;
+    }
+    if (newPass.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
     if (newPass !== confirm) {
       toast.error("New passwords do not match.");
       return;
     }
     setPasswordLoading(true);
     try {
-      await usersService.changePassword({
+      await backend.users.changePassword({
         current_password: current,
         new_password: newPass,
       });
@@ -109,9 +153,13 @@ export default function Account() {
       setConfirm("");
       toast.success("Password changed successfully!");
     } catch (e: unknown) {
-      toast.error(
-        e instanceof Error ? e.message : "Failed to change password."
-      );
+      const msg =
+        e instanceof BackendError
+          ? e.message
+          : e instanceof Error
+          ? e.message
+          : "Failed to change password.";
+      toast.error(msg);
     } finally {
       setPasswordLoading(false);
     }
@@ -121,14 +169,18 @@ export default function Account() {
     if (!user) return;
     setDeleteLoading(true);
     try {
-      await usersService.deleteAccount(user.id);
+      await backend.users.deleteAccount(user.id);
       logout();
       toast.success("Account deleted successfully.");
       router.replace("/");
     } catch (e: unknown) {
-      toast.error(
-        e instanceof Error ? e.message : "Failed to delete account."
-      );
+      const msg =
+        e instanceof BackendError
+          ? e.message
+          : e instanceof Error
+          ? e.message
+          : "Failed to delete account.";
+      toast.error(msg);
       setDel(false);
     } finally {
       setDeleteLoading(false);
@@ -149,12 +201,12 @@ export default function Account() {
             {!imageError ? (
               <Image
                 className="object-cover"
-                src={user.image_path || "/default.jpg"}
+                src={user.avatarUrl}
                 alt="Profile picture"
                 fill
                 sizes="96px"
                 onError={() => setImageError(true)}
-                unoptimized={user.image_path?.startsWith("http://127.0.0.1") || user.image_path?.startsWith("http://localhost")}
+                unoptimized
               />
             ) : (
               <UserIcon size={48} className="text-slate-400" />
@@ -218,16 +270,10 @@ export default function Account() {
           )}
           <div className="upload-row flex items-center gap-3">
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0] || null;
-                setFile(f);
-                if (f) {
-                  const url = URL.createObjectURL(f);
-                  setPreview(url);
-                } else setPreview("");
-              }}
+              onChange={handleFileChange}
             />
             <button
               className="btn primary inline-flex items-center gap-2"
