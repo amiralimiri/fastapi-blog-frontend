@@ -36,8 +36,6 @@ export default function PostPage() {
 
   const fetchPost = useCallback(async () => {
     try {
-      setPageLoading(true);
-      setError("");
       const d = await backend.posts.getPostById(postId);
       setPost(d);
       setTitle(d.title);
@@ -57,6 +55,7 @@ export default function PostPage() {
   }, [postId, router]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPost();
   }, [fetchPost]);
 
@@ -74,10 +73,6 @@ export default function PostPage() {
       setEdit(false);
       toast.success("Post updated successfully!");
     } catch (e: unknown) {
-      if (e && typeof e === "object" && "status" in e && (e as { status: unknown }).status === 401) {
-        router.push("/login");
-        return;
-      }
       toast.error(
         e instanceof Error ? e.message : "Network error. Please try again."
       );
@@ -96,10 +91,6 @@ export default function PostPage() {
       }
       router.push("/");
     } catch (e: unknown) {
-      if (e && typeof e === "object" && "status" in e && (e as { status: unknown }).status === 401) {
-        router.push("/login");
-        return;
-      }
       toast.error(
         e instanceof Error ? e.message : "An error occurred while deleting."
       );
@@ -130,7 +121,11 @@ export default function PostPage() {
         <div className="flex items-center justify-center gap-3">
           <button
             className="btn outline-primary inline-flex items-center gap-2"
-            onClick={fetchPost}
+            onClick={() => {
+              setPageLoading(true);
+              setError("");
+              fetchPost();
+            }}
           >
             <RefreshCw size={16} />
             <span>Retry</span>
@@ -145,7 +140,7 @@ export default function PostPage() {
   }
 
   const owner = user?.id === post.user_id;
-  const avatarUrl = post.author.avatarUrl || post.author.image_path || "/default.jpg";
+  const avatarUrl = post.author.avatarUrl;
 
   return (
     <>

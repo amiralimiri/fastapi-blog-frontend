@@ -39,6 +39,7 @@ export default function UserPosts() {
   }, [userId, limit]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadInitial();
   }, [loadInitial]);
 

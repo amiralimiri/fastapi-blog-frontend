@@ -11,7 +11,7 @@ import { Calendar, User as UserIcon } from "lucide-react";
 export function PostCard({ post }: { post: Post | NormalizedPost }) {
   const [imageError, setImageError] = useState(false);
 
-  const avatarUrl = post.author.avatarUrl || post.author.image_path || "/default.jpg";
+  const avatarUrl = post.author.avatarUrl;
 
   return (
     <article className="content-section article-card hover:shadow-md transition-shadow">

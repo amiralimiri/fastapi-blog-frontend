@@ -33,6 +33,7 @@ export default function HomePage() {
   }, [limit]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load(0, true);
 
     const onPostsUpdated = () => {

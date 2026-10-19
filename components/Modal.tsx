@@ -1,24 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+const emptySubscribe = () => () => {};
+
 export function Modal({
+  isOpen = true,
   title,
   children,
   onClose,
   danger = false,
 }: {
+  isOpen?: boolean;
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   danger?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   useEffect(() => {
-    setMounted(true);
+    if (!isOpen) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -30,9 +38,9 @@ export function Modal({
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", fn);
     };
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
-  if (!mounted) return null;
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div

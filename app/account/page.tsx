@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { backend, BackendError } from "@/lib/backend";
+import { backend, BackendError, type NormalizedUser } from "@/lib/backend";
 import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/Modal";
 import { toast } from "sonner";
@@ -16,12 +16,17 @@ import {
   Loader2,
 } from "lucide-react";
 
-export default function Account() {
-  const router = useRouter();
-  const { user, isLoading: authLoading, logout, updateUser } = useAuth();
+interface AccountContentProps {
+  user: NormalizedUser;
+  logout: () => void;
+  updateUser: (user: NormalizedUser) => void;
+}
 
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+function AccountContent({ user, logout, updateUser }: AccountContentProps) {
+  const router = useRouter();
+
+  const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email || "");
   const [current, setCurrent] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -35,19 +40,8 @@ export default function Account() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const initialLoadedUserIdRef = useRef<number | null>(null);
   const previewRef = useRef<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    } else if (user && initialLoadedUserIdRef.current !== user.id) {
-      initialLoadedUserIdRef.current = user.id;
-      setUsername(user.username);
-      setEmail(user.email || "");
-    }
-  }, [user, authLoading, router]);
 
   const revokePreview = () => {
     if (previewRef.current) {
@@ -187,9 +181,6 @@ export default function Account() {
     }
   }
 
-  if (authLoading || !user) {
-    return <div className="loading">Loading account...</div>;
-  }
   return (
     <>
       <title>Account Settings | FastAPI Blog</title>
@@ -328,69 +319,95 @@ export default function Account() {
                 required
               />
             </label>
-            <button type="submit" className="btn primary inline-flex items-center gap-2" disabled={passwordLoading}>
+            <button
+              type="submit"
+              className="btn primary inline-flex items-center gap-2"
+              disabled={passwordLoading}
+            >
               {passwordLoading && <Loader2 size={16} className="animate-spin" />}
-              <span>{passwordLoading ? "Saving..." : "Change Password"}</span>
+              <span>{passwordLoading ? "Updating..." : "Change Password"}</span>
             </button>
           </form>
         </div>
 
         <hr />
-
         <div className="section-block">
-          <button
-            className="btn secondary inline-flex items-center gap-2"
-            onClick={() => {
-              logout();
-              router.replace("/");
-            }}
-          >
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <hr />
-
-        <div className="section-block">
-          <h3 className="danger-text flex items-center gap-2 mb-2 font-bold">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-red-600 dark:text-red-400">
             <Trash2 size={18} />
             <span>Danger Zone</span>
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Once you delete your account, there is no going back. All your posts
-            will also be permanently deleted.
+            Once you delete your account, there is no going back. Please be certain.
           </p>
-          <button className="btn outline-danger inline-flex items-center gap-2 text-sm" onClick={() => setDel(true)}>
-            <Trash2 size={15} />
-            <span>Delete Account</span>
-          </button>
-        </div>
-      </div>
-
-      {del && (
-        <Modal title="Delete Account?" danger onClose={() => setDel(false)}>
-          <div className="modal-body">
-            <p className="modal-message">
-              Are you sure you want to delete your account? This action cannot
-              be undone. All your posts will be permanently deleted.
-            </p>
-          </div>
-          <div className="modal-footer">
-            <button className="btn secondary" onClick={() => setDel(false)}>
-              Cancel
+          <div className="flex flex-wrap gap-4">
+            <button
+              className="btn outline-danger inline-flex items-center gap-2"
+              onClick={() => setDel(true)}
+            >
+              <Trash2 size={16} />
+              <span>Delete Account</span>
             </button>
             <button
-              className="btn danger inline-flex items-center gap-1.5"
-              onClick={deleteAccount}
-              disabled={deleteLoading}
+              className="btn secondary inline-flex items-center gap-2"
+              onClick={() => {
+                logout();
+                router.replace("/login");
+              }}
             >
-              {deleteLoading && <Loader2 size={15} className="animate-spin" />}
-              <span>{deleteLoading ? "Deleting..." : "Delete Account"}</span>
+              <LogOut size={16} />
+              <span>Log Out</span>
             </button>
           </div>
-        </Modal>
-      )}
+        </div>
+
+        {del && (
+          <Modal title="Delete Account?" danger onClose={() => setDel(false)}>
+            <div className="modal-body mb-6">
+              <p className="modal-message">
+                Are you sure you want to delete your account? This action cannot
+                be undone. All your posts will be permanently deleted.
+              </p>
+            </div>
+            <div className="modal-footer flex justify-end gap-3">
+              <button className="btn secondary" onClick={() => setDel(false)} disabled={deleteLoading}>
+                Cancel
+              </button>
+              <button
+                className="btn danger inline-flex items-center gap-2"
+                onClick={deleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading && <Loader2 size={16} className="animate-spin" />}
+                <span>{deleteLoading ? "Deleting..." : "Delete Account"}</span>
+              </button>
+            </div>
+          </Modal>
+        )}
+      </div>
     </>
+  );
+}
+
+export default function Account() {
+  const router = useRouter();
+  const { user, isLoading: authLoading, logout, updateUser } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || !user) {
+    return <div className="loading">Loading account...</div>;
+  }
+
+  return (
+    <AccountContent
+      key={user.id}
+      user={user}
+      logout={logout}
+      updateUser={updateUser}
+    />
   );
 }

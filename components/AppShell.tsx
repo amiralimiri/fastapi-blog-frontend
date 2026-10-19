@@ -26,15 +26,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [menu, setMenu] = useState(false);
   const [themeMenu, setThemeMenu] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto");
+  const [theme, setTheme] = useState<"light" | "dark" | "auto">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme") as "light" | "dark" | "auto" | null;
+      if (saved) return saved;
+    }
+    return "auto";
+  });
   const [createOpen, setCreateOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMenu(false);
+    setThemeMenu(false);
+  }
 
   const themeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme") as "light" | "dark" | "auto" | null;
-    if (saved) setTheme(saved);
-  }, []);
 
   useEffect(() => {
     const isDark =
@@ -47,11 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.bsTheme = isDark ? "dark" : "light";
     localStorage.setItem("theme", theme);
   }, [theme]);
-
-  useEffect(() => {
-    setMenu(false);
-    setThemeMenu(false);
-  }, [pathname]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
