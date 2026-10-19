@@ -4,7 +4,7 @@ import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import Account from "./page";
 import { AuthProvider } from "@/context/AuthContext";
-import { backend, BackendError } from "@/lib/backend";
+import { backend, BackendError, type NormalizedUser } from "@/lib/backend";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -467,7 +467,7 @@ describe("app/account/page (Account)", () => {
 
   it("redirects unauthenticated users to login", async () => {
     backend.clearToken();
-    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue(null as any);
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue(null as unknown as NormalizedUser);
     const router = useRouter();
 
     render(

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import type { Post } from "@/lib/types";
 import type { NormalizedPost } from "@/lib/backend";
-import { formatDate } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { Calendar, User as UserIcon } from "lucide-react";
 
 export function PostCard({ post }: { post: Post | NormalizedPost }) {

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { backend, BackendError, type NormalizedPost } from "@/lib/backend";
-import { formatDate } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/Modal";
 import { toast } from "sonner";

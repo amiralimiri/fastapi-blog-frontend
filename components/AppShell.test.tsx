@@ -4,13 +4,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppShell } from "./AppShell";
 import { AuthProvider } from "@/context/AuthContext";
-import { setToken } from "@/lib/api";
+import { backend } from "@/lib/backend";
 
 const mockAuthUser = {
   id: 1,
   username: "johndoe",
   email: "john@example.com",
-  image_file: null,
+  avatarUrl: "/static/default.jpg",
   image_path: "/static/default.jpg",
 };
 
@@ -41,7 +41,7 @@ describe("components/AppShell", () => {
   });
 
   it("renders authenticated navigation and username when user is logged in", async () => {
-    setToken("valid-token");
+    backend.setToken("valid-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockAuthUser), {
         status: 200,
@@ -87,7 +87,7 @@ describe("components/AppShell", () => {
   });
 
   it("opens New Post modal when authenticated user clicks New Post button", async () => {
-    setToken("valid-token");
+    backend.setToken("valid-token");
     global.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(mockAuthUser), {
         status: 200,

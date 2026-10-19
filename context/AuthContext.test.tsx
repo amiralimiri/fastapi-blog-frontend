@@ -10,7 +10,7 @@ const mockUser = {
   id: 42,
   username: "testuser",
   email: "test@example.com",
-  image_file: null,
+  avatarUrl: "/static/default.jpg",
   image_path: "/static/default.jpg",
 };
 

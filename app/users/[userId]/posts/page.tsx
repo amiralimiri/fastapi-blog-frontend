@@ -145,7 +145,7 @@ export default function UserPosts() {
             <FileText size={48} className="mx-auto text-muted-foreground opacity-50 mb-3" />
             <h3 className="text-lg font-semibold mb-1">No posts yet</h3>
             <p className="text-muted-foreground text-sm">
-              This user hasn't published any articles yet.
+              This user hasn&apos;t published any articles yet.
             </p>
           </div>
         )}

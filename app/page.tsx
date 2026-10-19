@@ -42,17 +42,18 @@ export default function HomePage() {
     return () => window.removeEventListener("postsUpdated", onPostsUpdated);
   }, [load]);
 
+  const posts = data?.posts;
   const displayedPosts = useMemo(() => {
-    if (!data?.posts) return [];
-    if (!searchQuery.trim()) return data.posts;
+    if (!posts) return [];
+    if (!searchQuery.trim()) return posts;
     const q = searchQuery.toLowerCase().trim();
-    return data.posts.filter(
+    return posts.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         p.content.toLowerCase().includes(q) ||
         p.author.username.toLowerCase().includes(q)
     );
-  }, [data?.posts, searchQuery]);
+  }, [posts, searchQuery]);
 
   if (!data && loading) {
     return (

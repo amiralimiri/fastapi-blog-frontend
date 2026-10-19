@@ -99,7 +99,7 @@ export default function Login() {
           <Link href="/forgot-password">Forgot your password?</Link>
         </p>
         <p className="m-0 text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/register" className="font-semibold underline">
             Register here
           </Link>

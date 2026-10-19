@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
 import Login from "./page";
 import { AuthProvider } from "@/context/AuthContext";
-import { backend, BackendError } from "@/lib/backend";
+import { backend } from "@/lib/backend";
 import { toast } from "sonner";
 
 describe("app/login/page", () => {

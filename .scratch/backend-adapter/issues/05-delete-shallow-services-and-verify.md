@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Obsolete shallow service files deleted: `lib/services/posts.service.ts`, `lib/services/users.service.ts`, `lib/services/auth.service.ts`, and `lib/services/index.ts`
-- [ ] Obsolete HTTP utility `lib/api.ts` deleted and its tests removed or migrated to adapter tests
-- [ ] Zero imports remain across `app/`, `components/`, and `context/` pointing to deleted service files
-- [ ] Canonical domain types in `lib/types.ts` reflect normalized domain entities (`avatarUrl`)
-- [ ] Entire test suite (`npm test`) executes 100% green across the single adapter seam
-- [ ] Application builds without TypeScript or ESLint errors (`npm run build`)
+- [x] Obsolete shallow service files deleted: `lib/services/posts.service.ts`, `lib/services/users.service.ts`, `lib/services/auth.service.ts`, and `lib/services/index.ts`
+- [x] Obsolete HTTP utility `lib/api.ts` deleted and its tests removed or migrated to adapter tests
+- [x] Zero imports remain across `app/`, `components/`, and `context/` pointing to deleted service files
+- [x] Canonical domain types in `lib/types.ts` reflect normalized domain entities (`avatarUrl`)
+- [x] Entire test suite (`npm test`) executes 100% green across the single adapter seam
+- [x] Application builds without TypeScript or ESLint errors (`npm run build`)

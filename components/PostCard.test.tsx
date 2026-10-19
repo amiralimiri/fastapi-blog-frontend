@@ -15,7 +15,6 @@ const mockPost: Post = {
     username: "alice_dev",
     email: "alice@example.com",
     avatarUrl: "/static/profiles/alice.png",
-    image_file: null,
     image_path: "/static/profiles/alice.png",
   },
 };

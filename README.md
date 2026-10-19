@@ -95,10 +95,8 @@ npm start
 ├── context/
 │   └── AuthContext.tsx       # Reactive authentication context
 ├── lib/
-│   ├── services/             # Modular API services (posts, users, auth)
-│   ├── api.ts                # API client helpers & fetch wrappers
-│   ├── auth.ts               # Auth token re-exports
+│   ├── backend/              # Unified Backend Adapter & Error Normalizer
 │   ├── types.ts              # TypeScript interface definitions
-│   └── utils.ts              # ClassName merge utility (cn)
+│   └── utils.ts              # Utility functions (cn, formatDate)
 ```
 

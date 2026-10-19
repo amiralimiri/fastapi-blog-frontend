@@ -4,7 +4,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PostPage from "./page";
 import { AuthProvider } from "@/context/AuthContext";
-import { setToken } from "@/lib/api";
 import { backend, BackendError } from "@/lib/backend";
 import type { NormalizedPost } from "@/lib/backend";
 import { useRouter } from "next/navigation";
@@ -56,7 +55,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   });
 
   it("displays Edit and Delete buttons when logged in user is the post author", async () => {
-    setToken("author-token");
+    backend.setToken("author-token");
 
     vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
@@ -80,7 +79,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   });
 
   it("hides Edit and Delete buttons when logged in user is NOT the author", async () => {
-    setToken("other-user-token");
+    backend.setToken("other-user-token");
 
     vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
@@ -152,7 +151,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   });
 
   it("updates post via backend.posts.updatePost when author saves changes", async () => {
-    setToken("author-token");
+    backend.setToken("author-token");
     vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
       id: 10,
@@ -196,7 +195,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
 
   it("deletes post via backend.posts.deletePost when author confirms deletion", async () => {
     const router = useRouter();
-    setToken("author-token");
+    backend.setToken("author-token");
     vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
       id: 10,

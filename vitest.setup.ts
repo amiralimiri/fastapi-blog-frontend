@@ -31,9 +31,13 @@ vi.mock("next/navigation", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: ({ fill, unoptimized, priority, ...props }: any) => {
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; unoptimized?: boolean; priority?: boolean }) => {
+    const rest = { ...props };
+    delete rest.fill;
+    delete rest.unoptimized;
+    delete rest.priority;
     return React.createElement("img", {
-      ...props,
+      ...rest,
       alt: props.alt || "mocked image",
     });
   },
