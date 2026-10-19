@@ -1,9 +1,10 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HomePage from "./page";
 import { backend, BackendError } from "@/lib/backend";
+import { invalidateFeed } from "@/lib/feed";
 import type { NormalizedPaginatedPosts } from "@/lib/backend";
 
 const mockPostsResponse: NormalizedPaginatedPosts = {
@@ -46,6 +47,26 @@ const mockPostsResponse: NormalizedPaginatedPosts = {
 describe("app/page (HomePage)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("displays initial pulse skeleton during initial load before request resolves", async () => {
+    let resolvePosts: (value: NormalizedPaginatedPosts) => void = () => {};
+    const pendingPromise = new Promise<NormalizedPaginatedPosts>((resolve) => {
+      resolvePosts = resolve;
+    });
+
+    vi.spyOn(backend.posts, "getPosts").mockReturnValueOnce(pendingPromise);
+
+    render(<HomePage />);
+
+    expect(screen.getByTestId("feed-skeleton")).toBeInTheDocument();
+
+    resolvePosts(mockPostsResponse);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("feed-skeleton")).not.toBeInTheDocument();
+      expect(screen.getByText("First Post Title")).toBeInTheDocument();
+    });
   });
 
   it("fetches and renders list of posts", async () => {
@@ -105,7 +126,56 @@ describe("app/page (HomePage)", () => {
     expect(postsSpy).toHaveBeenCalledTimes(2);
   });
 
-  it("shows Load More button when has_more is true and appends posts", async () => {
+  it("shows Load More button when has_more is true, reflects loading spinner while pending, and appends posts", async () => {
+    const page1: NormalizedPaginatedPosts = {
+      posts: [mockPostsResponse.posts[0]],
+      total: 2,
+      skip: 0,
+      limit: 1,
+      has_more: true,
+    };
+
+    let resolvePage2: (value: NormalizedPaginatedPosts) => void = () => {};
+    const page2Promise = new Promise<NormalizedPaginatedPosts>((resolve) => {
+      resolvePage2 = resolve;
+    });
+
+    vi.spyOn(backend.posts, "getPosts")
+      .mockResolvedValueOnce(page1)
+      .mockReturnValueOnce(page2Promise);
+
+    render(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("First Post Title")).toBeInTheDocument();
+    });
+    const loadMoreBtn = screen.getByRole("button", { name: /Load More Posts/i });
+    expect(loadMoreBtn).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(loadMoreBtn);
+
+    // Verify loading spinner & disabled state during pagination
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Loading\.\.\./i })).toBeDisabled();
+    });
+
+    resolvePage2({
+      posts: [mockPostsResponse.posts[1]],
+      total: 2,
+      skip: 1,
+      limit: 1,
+      has_more: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Second Post Title")).toBeInTheDocument();
+    });
+    expect(backend.posts.getPosts).toHaveBeenLastCalledWith({ skip: 1, limit: 10 });
+    expect(screen.queryByRole("button", { name: /Load More Posts/i })).not.toBeInTheDocument();
+  });
+
+  it("handles incremental pagination failure, shows retry banner, and recovers on retry", async () => {
     const page1: NormalizedPaginatedPosts = {
       posts: [mockPostsResponse.posts[0]],
       total: 2,
@@ -123,6 +193,7 @@ describe("app/page (HomePage)", () => {
 
     vi.spyOn(backend.posts, "getPosts")
       .mockResolvedValueOnce(page1)
+      .mockRejectedValueOnce(new BackendError(0, "Network timeout during pagination"))
       .mockResolvedValueOnce(page2);
 
     render(<HomePage />);
@@ -130,19 +201,29 @@ describe("app/page (HomePage)", () => {
     await waitFor(() => {
       expect(screen.getByText("First Post Title")).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: /Load More Posts/i })).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /Load More Posts/i }));
 
     await waitFor(() => {
+      expect(screen.getByText("Unable to load more posts. Please try again.")).toBeInTheDocument();
+    });
+
+    // Existing posts remain visible
+    expect(screen.getByText("First Post Title")).toBeInTheDocument();
+
+    // Click retry on pagination error banner
+    const retryBtn = screen.getByRole("button", { name: /Retry/i });
+    await user.click(retryBtn);
+
+    await waitFor(() => {
       expect(screen.getByText("Second Post Title")).toBeInTheDocument();
     });
-    expect(backend.posts.getPosts).toHaveBeenLastCalledWith({ skip: 1, limit: 10 });
-    expect(screen.queryByRole("button", { name: /Load More Posts/i })).not.toBeInTheDocument();
+
+    expect(screen.queryByText("Unable to load more posts. Please try again.")).not.toBeInTheDocument();
   });
 
-  it("filters posts by title in search box", async () => {
+  it("filters posts by title, content, and author in search box, and clears search", async () => {
     vi.spyOn(backend.posts, "getPosts").mockResolvedValueOnce(mockPostsResponse);
 
     render(<HomePage />);
@@ -154,10 +235,18 @@ describe("app/page (HomePage)", () => {
 
     const user = userEvent.setup();
     const searchInput = screen.getByPlaceholderText(/Search posts by title/i);
-    await user.type(searchInput, "First");
+
+    // Search by author
+    await user.type(searchInput, "author2");
+    expect(screen.queryByText("First Post Title")).not.toBeInTheDocument();
+    expect(screen.getByText("Second Post Title")).toBeInTheDocument();
+
+    // Clear search using clear button
+    const clearBtn = screen.getByRole("button", { name: /Clear search/i });
+    await user.click(clearBtn);
 
     expect(screen.getByText("First Post Title")).toBeInTheDocument();
-    expect(screen.queryByText("Second Post Title")).not.toBeInTheDocument();
+    expect(screen.getByText("Second Post Title")).toBeInTheDocument();
   });
 
   it("shows empty search state when query does not match any posts", async () => {
@@ -177,5 +266,48 @@ describe("app/page (HomePage)", () => {
     expect(
       screen.getByText(/Try adjusting your search query/i)
     ).toBeInTheDocument();
+  });
+
+  it("refreshes posts when invalidateFeed() is called", async () => {
+    const updatedResponse: NormalizedPaginatedPosts = {
+      posts: [
+        {
+          id: 3,
+          user_id: 3,
+          title: "Newly Published Post",
+          content: "Brand new content",
+          date_posted: "2026-04-03T12:00:00Z",
+          author: {
+            id: 3,
+            username: "author3",
+            email: "author3@example.com",
+            avatarUrl: "/static/default.jpg",
+            image_path: "/static/default.jpg",
+          },
+        },
+      ],
+      total: 1,
+      skip: 0,
+      limit: 10,
+      has_more: false,
+    };
+
+    vi.spyOn(backend.posts, "getPosts")
+      .mockResolvedValueOnce(mockPostsResponse)
+      .mockResolvedValueOnce(updatedResponse);
+
+    render(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("First Post Title")).toBeInTheDocument();
+    });
+
+    act(() => {
+      invalidateFeed();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Newly Published Post")).toBeInTheDocument();
+    });
   });
 });
