@@ -3,9 +3,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HomePage from "./page";
-import type { PaginatedPosts } from "@/lib/types";
+import { backend, BackendError } from "@/lib/backend";
+import type { NormalizedPaginatedPosts } from "@/lib/backend";
 
-const mockPostsResponse: PaginatedPosts = {
+const mockPostsResponse: NormalizedPaginatedPosts = {
   posts: [
     {
       id: 1,
@@ -17,7 +18,7 @@ const mockPostsResponse: PaginatedPosts = {
         id: 1,
         username: "author1",
         email: "author1@example.com",
-        image_file: null,
+        avatarUrl: "/static/default.jpg",
         image_path: "/static/default.jpg",
       },
     },
@@ -31,7 +32,7 @@ const mockPostsResponse: PaginatedPosts = {
         id: 2,
         username: "author2",
         email: "author2@example.com",
-        image_file: null,
+        avatarUrl: "/static/default.jpg",
         image_path: "/static/default.jpg",
       },
     },
@@ -48,12 +49,7 @@ describe("app/page (HomePage)", () => {
   });
 
   it("fetches and renders list of posts", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify(mockPostsResponse), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
+    vi.spyOn(backend.posts, "getPosts").mockResolvedValueOnce(mockPostsResponse);
 
     render(<HomePage />);
 
@@ -62,23 +58,19 @@ describe("app/page (HomePage)", () => {
       expect(screen.getByText("Second Post Title")).toBeInTheDocument();
     });
 
+    expect(backend.posts.getPosts).toHaveBeenCalledWith({ skip: 0, limit: 10 });
     expect(screen.getByText("author1")).toBeInTheDocument();
     expect(screen.getByText("author2")).toBeInTheDocument();
   });
 
   it("renders empty state when there are no posts", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          posts: [],
-          total: 0,
-          skip: 0,
-          limit: 10,
-          has_more: false,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
-    );
+    vi.spyOn(backend.posts, "getPosts").mockResolvedValueOnce({
+      posts: [],
+      total: 0,
+      skip: 0,
+      limit: 10,
+      has_more: false,
+    });
 
     render(<HomePage />);
 
@@ -91,15 +83,9 @@ describe("app/page (HomePage)", () => {
   });
 
   it("handles fetch failure and allows retrying", async () => {
-    global.fetch = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("Network failed"))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(mockPostsResponse), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    const postsSpy = vi.spyOn(backend.posts, "getPosts")
+      .mockRejectedValueOnce(new BackendError(0, "Network failed"))
+      .mockResolvedValueOnce(mockPostsResponse);
 
     render(<HomePage />);
 
@@ -116,17 +102,18 @@ describe("app/page (HomePage)", () => {
     await waitFor(() => {
       expect(screen.getByText("First Post Title")).toBeInTheDocument();
     });
+    expect(postsSpy).toHaveBeenCalledTimes(2);
   });
 
   it("shows Load More button when has_more is true and appends posts", async () => {
-    const page1: PaginatedPosts = {
+    const page1: NormalizedPaginatedPosts = {
       posts: [mockPostsResponse.posts[0]],
       total: 2,
       skip: 0,
       limit: 1,
       has_more: true,
     };
-    const page2: PaginatedPosts = {
+    const page2: NormalizedPaginatedPosts = {
       posts: [mockPostsResponse.posts[1]],
       total: 2,
       skip: 1,
@@ -134,20 +121,9 @@ describe("app/page (HomePage)", () => {
       has_more: false,
     };
 
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(page1), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(page2), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    vi.spyOn(backend.posts, "getPosts")
+      .mockResolvedValueOnce(page1)
+      .mockResolvedValueOnce(page2);
 
     render(<HomePage />);
 
@@ -162,16 +138,12 @@ describe("app/page (HomePage)", () => {
     await waitFor(() => {
       expect(screen.getByText("Second Post Title")).toBeInTheDocument();
     });
+    expect(backend.posts.getPosts).toHaveBeenLastCalledWith({ skip: 1, limit: 10 });
     expect(screen.queryByRole("button", { name: /Load More Posts/i })).not.toBeInTheDocument();
   });
 
   it("filters posts by title in search box", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify(mockPostsResponse), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
+    vi.spyOn(backend.posts, "getPosts").mockResolvedValueOnce(mockPostsResponse);
 
     render(<HomePage />);
 
@@ -189,12 +161,7 @@ describe("app/page (HomePage)", () => {
   });
 
   it("shows empty search state when query does not match any posts", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify(mockPostsResponse), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
+    vi.spyOn(backend.posts, "getPosts").mockResolvedValueOnce(mockPostsResponse);
 
     render(<HomePage />);
 

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { postsService } from "@/lib/services";
+import { backend } from "@/lib/backend";
 import { PostCard } from "@/components/PostCard";
-import type { PaginatedPosts } from "@/lib/types";
+import type { NormalizedPaginatedPosts } from "@/lib/backend";
 import { Loader2, RefreshCw, FileText, Search, X } from "lucide-react";
 
 export default function HomePage() {
-  const [data, setData] = useState<PaginatedPosts | null>(null);
+  const [data, setData] = useState<NormalizedPaginatedPosts | null>(null);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ export default function HomePage() {
     setLoading(true);
     setError("");
     try {
-      const d = await postsService.getPosts({ skip, limit });
+      const d = await backend.posts.getPosts({ skip, limit });
       setData((prev) =>
         replace ? d : { ...d, posts: [...(prev?.posts || []), ...d.posts] }
       );

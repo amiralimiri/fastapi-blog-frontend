@@ -4,14 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import type { Post } from "@/lib/types";
+import type { NormalizedPost } from "@/lib/backend";
 import { formatDate } from "@/lib/api";
 import { Calendar, User as UserIcon } from "lucide-react";
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post }: { post: Post | NormalizedPost }) {
   const [imageError, setImageError] = useState(false);
 
-  // Normalize image path (if relative or absolute)
-  const imageSrc = post.author.image_path || "/default.jpg";
+  const avatarUrl = post.author.avatarUrl || post.author.image_path || "/default.jpg";
 
   return (
     <article className="content-section article-card hover:shadow-md transition-shadow">
@@ -20,12 +20,12 @@ export function PostCard({ post }: { post: Post }) {
           {!imageError ? (
             <Image
               className="object-cover"
-              src={imageSrc}
+              src={avatarUrl}
               alt={`${post.author.username}'s profile`}
               fill
               sizes="64px"
               onError={() => setImageError(true)}
-              unoptimized={imageSrc.startsWith("http://127.0.0.1") || imageSrc.startsWith("http://localhost")}
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-slate-400">

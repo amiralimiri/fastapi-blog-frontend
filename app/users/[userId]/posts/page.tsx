@@ -4,14 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PostCard } from "@/components/PostCard";
-import type { PaginatedPosts, User } from "@/lib/types";
-import { usersService, postsService } from "@/lib/services";
+import { backend } from "@/lib/backend";
+import type { NormalizedPaginatedPosts, NormalizedUser } from "@/lib/backend";
 import { Loader2, RefreshCw, FileText, ArrowLeft } from "lucide-react";
 
 export default function UserPosts() {
   const { userId } = useParams<{ userId: string }>();
-  const [user, setUser] = useState<User | null>(null);
-  const [data, setData] = useState<PaginatedPosts | null>(null);
+  const [user, setUser] = useState<NormalizedUser | null>(null);
+  const [data, setData] = useState<NormalizedPaginatedPosts | null>(null);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -23,8 +23,8 @@ export default function UserPosts() {
     setInitialLoading(true);
     try {
       const [userData, d] = await Promise.all([
-        usersService.getUserById(userId),
-        postsService.getUserPosts(userId, { skip: 0, limit }),
+        backend.users.getUserById(userId),
+        backend.posts.getUserPosts(userId, { skip: 0, limit }),
       ]);
       setUser(userData);
       setData(d);
@@ -46,7 +46,7 @@ export default function UserPosts() {
     setLoading(true);
     setError("");
     try {
-      const d = await postsService.getUserPosts(userId, { skip: offset, limit });
+      const d = await backend.posts.getUserPosts(userId, { skip: offset, limit });
       setData((prev) =>
         prev ? { ...d, posts: [...prev.posts, ...d.posts] } : d
       );

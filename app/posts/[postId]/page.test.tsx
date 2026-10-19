@@ -5,11 +5,11 @@ import userEvent from "@testing-library/user-event";
 import PostPage from "./page";
 import { AuthProvider } from "@/context/AuthContext";
 import { setToken } from "@/lib/api";
-import { postsService, usersService } from "@/lib/services";
-import { backend } from "@/lib/backend";
-import type { Post } from "@/lib/types";
+import { backend, BackendError } from "@/lib/backend";
+import type { NormalizedPost } from "@/lib/backend";
+import { useRouter } from "next/navigation";
 
-const mockPostDetail: Post = {
+const mockPostDetail: NormalizedPost = {
   id: 1,
   user_id: 10,
   title: "Mastering TypeScript & Next.js",
@@ -19,7 +19,7 @@ const mockPostDetail: Post = {
     id: 10,
     username: "super_author",
     email: "super@example.com",
-    image_file: null,
+    avatarUrl: "/static/default.jpg",
     image_path: "/static/default.jpg",
   },
 };
@@ -31,7 +31,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   });
 
   it("renders post details for guests without Edit or Delete buttons", async () => {
-    vi.spyOn(postsService, "getPostById").mockResolvedValue(mockPostDetail);
+    vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
 
     render(
       <AuthProvider>
@@ -58,14 +58,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   it("displays Edit and Delete buttons when logged in user is the post author", async () => {
     setToken("author-token");
 
-    vi.spyOn(postsService, "getPostById").mockResolvedValue(mockPostDetail);
-    vi.spyOn(usersService, "getCurrentUser").mockResolvedValue({
-      id: 10, // matching user_id
-      username: "super_author",
-      email: "super@example.com",
-      image_file: null,
-      image_path: "/static/default.jpg",
-    });
+    vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
       id: 10,
       username: "super_author",
@@ -89,14 +82,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   it("hides Edit and Delete buttons when logged in user is NOT the author", async () => {
     setToken("other-user-token");
 
-    vi.spyOn(postsService, "getPostById").mockResolvedValue(mockPostDetail);
-    vi.spyOn(usersService, "getCurrentUser").mockResolvedValue({
-      id: 999, // different user_id
-      username: "some_reader",
-      email: "reader@example.com",
-      image_file: null,
-      image_path: "/static/default.jpg",
-    });
+    vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
     vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
       id: 999,
       username: "some_reader",
@@ -122,7 +108,7 @@ describe("app/posts/[postId]/page (PostPage)", () => {
   });
 
   it("renders retry button on fetch failure and retries loading post", async () => {
-    const postSpy = vi.spyOn(postsService, "getPostById")
+    const postSpy = vi.spyOn(backend.posts, "getPostById")
       .mockRejectedValue(new Error("Network failed"));
 
     render(
@@ -145,6 +131,101 @@ describe("app/posts/[postId]/page (PostPage)", () => {
       expect(
         screen.getByRole("heading", { name: "Mastering TypeScript & Next.js" })
       ).toBeInTheDocument();
+    });
+  });
+
+  it("redirects to /not-found when getPostById throws 404 BackendError", async () => {
+    const router = useRouter();
+    vi.spyOn(backend.posts, "getPostById").mockRejectedValue(
+      new BackendError(404, "Post not found")
+    );
+
+    render(
+      <AuthProvider>
+        <PostPage />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(router.replace).toHaveBeenCalledWith("/not-found");
+    });
+  });
+
+  it("updates post via backend.posts.updatePost when author saves changes", async () => {
+    setToken("author-token");
+    vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
+      id: 10,
+      username: "super_author",
+      email: "super@example.com",
+      avatarUrl: "/static/default.jpg",
+      image_path: "/static/default.jpg",
+    });
+    vi.spyOn(backend.posts, "updatePost").mockResolvedValue({
+      ...mockPostDetail,
+      title: "Mastering Clean Architecture",
+    });
+
+    render(
+      <AuthProvider>
+        <PostPage />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit Post")).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Edit Post"));
+
+    const titleInput = screen.getByDisplayValue("Mastering TypeScript & Next.js");
+    await user.clear(titleInput);
+    await user.type(titleInput, "Mastering Clean Architecture");
+
+    await user.click(screen.getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      expect(backend.posts.updatePost).toHaveBeenCalledWith("1", {
+        title: "Mastering Clean Architecture",
+        content: "Deep dive into clean architecture in React.",
+      });
+      expect(screen.getByRole("heading", { name: "Mastering Clean Architecture" })).toBeInTheDocument();
+    });
+  });
+
+  it("deletes post via backend.posts.deletePost when author confirms deletion", async () => {
+    const router = useRouter();
+    setToken("author-token");
+    vi.spyOn(backend.posts, "getPostById").mockResolvedValue(mockPostDetail);
+    vi.spyOn(backend.users, "getCurrentUser").mockResolvedValue({
+      id: 10,
+      username: "super_author",
+      email: "super@example.com",
+      avatarUrl: "/static/default.jpg",
+      image_path: "/static/default.jpg",
+    });
+    vi.spyOn(backend.posts, "deletePost").mockResolvedValue();
+
+    render(
+      <AuthProvider>
+        <PostPage />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete Post")).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Delete Post"));
+
+    const confirmDeleteBtn = screen.getByRole("button", { name: /^Delete$/i });
+    await user.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      expect(backend.posts.deletePost).toHaveBeenCalledWith("1");
+      expect(router.push).toHaveBeenCalledWith("/");
     });
   });
 });

@@ -4,9 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { Post } from "@/lib/types";
+import { backend, BackendError, type NormalizedPost } from "@/lib/backend";
 import { formatDate } from "@/lib/api";
-import { postsService } from "@/lib/services";
 import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/Modal";
 import { toast } from "sonner";
@@ -25,7 +24,7 @@ export default function PostPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<NormalizedPost | null>(null);
   const [edit, setEdit] = useState(false);
   const [del, setDel] = useState(false);
   const [title, setTitle] = useState("");
@@ -39,12 +38,15 @@ export default function PostPage() {
     try {
       setPageLoading(true);
       setError("");
-      const d = await postsService.getPostById(postId);
+      const d = await backend.posts.getPostById(postId);
       setPost(d);
       setTitle(d.title);
       setContent(d.content);
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "status" in err && err.status === 404) {
+      if (
+        (err instanceof BackendError && err.status === 404) ||
+        (err && typeof err === "object" && "status" in err && (err as { status: unknown }).status === 404)
+      ) {
         router.replace("/not-found");
         return;
       }
@@ -67,12 +69,12 @@ export default function PostPage() {
 
     setLoading(true);
     try {
-      const updated = await postsService.updatePost(postId, { title, content });
+      const updated = await backend.posts.updatePost(postId, { title, content });
       setPost(updated);
       setEdit(false);
       toast.success("Post updated successfully!");
     } catch (e: unknown) {
-      if (e && typeof e === "object" && "status" in e && e.status === 401) {
+      if (e && typeof e === "object" && "status" in e && (e as { status: unknown }).status === 401) {
         router.push("/login");
         return;
       }
@@ -87,14 +89,14 @@ export default function PostPage() {
   async function remove() {
     setLoading(true);
     try {
-      await postsService.deletePost(postId);
+      await backend.posts.deletePost(postId);
       toast.success("Post deleted successfully!");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("postsUpdated"));
       }
       router.push("/");
     } catch (e: unknown) {
-      if (e && typeof e === "object" && "status" in e && e.status === 401) {
+      if (e && typeof e === "object" && "status" in e && (e as { status: unknown }).status === 401) {
         router.push("/login");
         return;
       }
@@ -143,7 +145,7 @@ export default function PostPage() {
   }
 
   const owner = user?.id === post.user_id;
-  const imageSrc = post.author.image_path || "/default.jpg";
+  const avatarUrl = post.author.avatarUrl || post.author.image_path || "/default.jpg";
 
   return (
     <>
@@ -163,12 +165,12 @@ export default function PostPage() {
             {!imageError ? (
               <Image
                 className="object-cover"
-                src={imageSrc}
+                src={avatarUrl}
                 alt={`${post.author.username}'s profile`}
                 fill
                 sizes="64px"
                 onError={() => setImageError(true)}
-                unoptimized={imageSrc.startsWith("http://127.0.0.1") || imageSrc.startsWith("http://localhost")}
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-400">

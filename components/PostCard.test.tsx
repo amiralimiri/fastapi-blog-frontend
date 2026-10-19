@@ -14,6 +14,7 @@ const mockPost: Post = {
     id: 5,
     username: "alice_dev",
     email: "alice@example.com",
+    avatarUrl: "/static/profiles/alice.png",
     image_file: null,
     image_path: "/static/profiles/alice.png",
   },
@@ -39,6 +40,13 @@ describe("components/PostCard", () => {
 
     const authorLink = screen.getByText("alice_dev").closest("a");
     expect(authorLink).toHaveAttribute("href", "/users/5/posts");
+  });
+
+  it("renders author avatar directly from author.avatarUrl", () => {
+    render(<PostCard post={mockPost} />);
+
+    const img = screen.getByAltText("alice_dev's profile");
+    expect(img).toHaveAttribute("src", "/static/profiles/alice.png");
   });
 
   it("falls back to user icon placeholder when author avatar fails to load", () => {

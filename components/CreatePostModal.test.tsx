@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreatePostModal } from "./CreatePostModal";
-import { postsService } from "@/lib/services";
+import { backend, BackendError } from "@/lib/backend";
 import { toast } from "sonner";
 
 describe("components/CreatePostModal", () => {
@@ -37,12 +37,12 @@ describe("components/CreatePostModal", () => {
         id: 1,
         username: "test",
         email: "test@example.com",
-        image_file: null,
+        avatarUrl: "/default.jpg",
         image_path: "/default.jpg",
       },
     };
 
-    vi.spyOn(postsService, "createPost").mockResolvedValueOnce(mockPost);
+    vi.spyOn(backend.posts, "createPost").mockResolvedValueOnce(mockPost);
 
     render(
       <CreatePostModal
@@ -65,7 +65,7 @@ describe("components/CreatePostModal", () => {
     await user.click(screen.getByRole("button", { name: /Publish Post/i }));
 
     await waitFor(() => {
-      expect(postsService.createPost).toHaveBeenCalledWith({
+      expect(backend.posts.createPost).toHaveBeenCalledWith({
         title: "New Test Article",
         content: "This is test content",
       });
@@ -77,7 +77,7 @@ describe("components/CreatePostModal", () => {
   });
 
   it("shows error feedback when post creation fails", async () => {
-    vi.spyOn(postsService, "createPost").mockRejectedValueOnce(
+    vi.spyOn(backend.posts, "createPost").mockRejectedValueOnce(
       new Error("Post limit reached")
     );
 
@@ -97,6 +97,30 @@ describe("components/CreatePostModal", () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Post limit reached");
+    });
+  });
+
+  it("displays normalized error message when backend returns BackendError", async () => {
+    vi.spyOn(backend.posts, "createPost").mockRejectedValueOnce(
+      new BackendError(422, "Content is required and cannot be empty")
+    );
+
+    render(<CreatePostModal isOpen={true} onClose={vi.fn()} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText(/Give your article a clear title/i),
+      "Validation Failure Post"
+    );
+    await user.type(
+      screen.getByPlaceholderText(/Write your article content here/i),
+      "Valid text"
+    );
+
+    await user.click(screen.getByRole("button", { name: /Publish Post/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Content is required and cannot be empty");
     });
   });
 

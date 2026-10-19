@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "./Modal";
-import { postsService } from "@/lib/services";
+import { backend } from "@/lib/backend";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -34,7 +34,7 @@ export function CreatePostModal({
 
     setPosting(true);
     try {
-      await postsService.createPost({ title, content });
+      await backend.posts.createPost({ title, content });
 
       setTitle("");
       setContent("");
