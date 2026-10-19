@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { backend, BackendError, type NormalizedPost } from "@/lib/backend";
+import { invalidateFeed } from "@/lib/feed";
 import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/Modal";
@@ -86,8 +87,10 @@ export default function PostPage() {
     try {
       await backend.posts.deletePost(postId);
       toast.success("Post deleted successfully!");
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("postsUpdated"));
+      if (post) {
+        invalidateFeed({ userId: post.author.id });
+      } else {
+        invalidateFeed();
       }
       router.push("/");
     } catch (e: unknown) {

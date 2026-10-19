@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "./Modal";
 import { backend } from "@/lib/backend";
+import { invalidateFeed } from "@/lib/feed";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -40,14 +41,12 @@ export function CreatePostModal({
       setContent("");
       toast.success("Post created successfully!");
       onClose();
+      invalidateFeed();
       if (onSuccess) {
         onSuccess();
       } else {
         router.push("/");
         router.refresh();
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("postsUpdated"));
-        }
       }
     } catch (err: unknown) {
       toast.error(

@@ -6,6 +6,7 @@ import PostPage from "./page";
 import { AuthProvider } from "@/context/AuthContext";
 import { backend, BackendError } from "@/lib/backend";
 import type { NormalizedPost } from "@/lib/backend";
+import { subscribeFeed, clearFeedSubscribers } from "@/lib/feed";
 import { useRouter } from "next/navigation";
 
 const mockPostDetail: NormalizedPost = {
@@ -25,6 +26,7 @@ const mockPostDetail: NormalizedPost = {
 
 describe("app/posts/[postId]/page (PostPage)", () => {
   beforeEach(() => {
+    clearFeedSubscribers();
     localStorage.clear();
     vi.restoreAllMocks();
   });
@@ -206,6 +208,15 @@ describe("app/posts/[postId]/page (PostPage)", () => {
     });
     vi.spyOn(backend.posts, "deletePost").mockResolvedValue();
 
+    const globalFeedListener = vi.fn();
+    const authorFeedListener = vi.fn();
+    const otherFeedListener = vi.fn();
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+
+    const unsubGlobal = subscribeFeed({ callback: globalFeedListener });
+    const unsubAuthor = subscribeFeed({ userId: 10, callback: authorFeedListener });
+    const unsubOther = subscribeFeed({ userId: 999, callback: otherFeedListener });
+
     render(
       <AuthProvider>
         <PostPage />
@@ -225,6 +236,15 @@ describe("app/posts/[postId]/page (PostPage)", () => {
     await waitFor(() => {
       expect(backend.posts.deletePost).toHaveBeenCalledWith("1");
       expect(router.push).toHaveBeenCalledWith("/");
+      expect(globalFeedListener).toHaveBeenCalledTimes(1);
+      expect(authorFeedListener).toHaveBeenCalledTimes(1);
+      expect(otherFeedListener).not.toHaveBeenCalled();
     });
+
+    expect(dispatchSpy).not.toHaveBeenCalled();
+
+    unsubGlobal();
+    unsubAuthor();
+    unsubOther();
   });
 });
