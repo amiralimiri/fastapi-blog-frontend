@@ -16,6 +16,10 @@ _Avoid_: Profile picture, image_path, image_file
 A published blog entry authored by a User with a title, body content, and publication date.
 _Avoid_: Article, publication, story
 
+**Feed**:
+A paginated, queryable collection of Posts (either global or scoped to a specific User), presenting cursor traversal, live search filtering, and cross-view invalidation behind a single seam.
+_Avoid_: Post list, article stream, wall
+
 **Backend Adapter**:
 The deep module encapsulating network communication, credential lifecycle, response normalization, and error translation for the external FastAPI service.
 _Avoid_: API client, service layer, fetch helper
